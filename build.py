@@ -43,9 +43,8 @@ def load_site_url():
 SITE_URL = load_site_url()
 SITE_NAME = "특가레이더"
 SITE_TAGLINE = "토스쇼핑 반값 이하만 골라 담는 곳"
-DISCLOSURE = ("이 사이트는 토스쇼핑 쉐어링크 활동의 일환으로, "
-              "이에 따른 일정액의 수수료를 제공받습니다. "
-              "구매자가 부담하는 가격은 변하지 않습니다.")
+# 공정위 지침에 따른 경제적 이해관계 고지. 지정된 문구를 그대로 쓴다.
+DISCLOSURE = "✱ 이 포스팅은 토스쇼핑 쉐어링크 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다."
 
 
 def fetch_deals(conn, min_discount, limit):
@@ -318,9 +317,11 @@ header{{padding:34px 0 18px;border-bottom:1px solid var(--line)}}
 .empty{{padding:60px 0;text-align:center;color:var(--dim);font-family:var(--font-num);font-size:13px}}
 
 footer{{border-top:1px solid var(--line);padding:24px 0 60px;color:var(--dim);font-size:12px}}
+/* 법적 고지 — 또렷하게 보이도록 밝은 글자색과 강조 테두리 */
 .disclosure{{
-  border:1px solid var(--line);background:var(--panel);
-  padding:12px 14px;margin-bottom:14px;line-height:1.6;
+  border:1px solid var(--acid);border-left-width:4px;background:var(--panel);
+  color:var(--ink);font-size:14px;font-weight:500;
+  padding:14px 16px;margin-bottom:14px;line-height:1.6;
 }}
 /* ── 태블릿 ── */
 @media(max-width:760px){{
