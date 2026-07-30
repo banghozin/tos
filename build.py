@@ -72,6 +72,11 @@ SEO_KEYWORDS = ("핫딜, 핫딜모음, 핫딜 사이트, 핫딜 정보, 오늘�
 # 블로그 글이 아니라 사이트이므로 '이 포스팅은' → '이 사이트는' 으로 맞춘다.
 DISCLOSURE = "✱ 이 사이트는 토스쇼핑 쉐어링크 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다."
 
+# GoatCounter 방문자 분석. 화면엔 안 보이고 운영자만 대시보드에서 봄:
+# https://whrlaos.goatcounter.com  (내 접속 제외는 대시보드 Settings 에서 설정)
+ANALYTICS = ('<script data-goatcounter="https://whrlaos.goatcounter.com/count" '
+             'async src="//gc.zgo.at/count.js"></script>')
+
 # 라디에이더 + 불꽃 파비콘 (파란 배경, 흰 레이더 링, 중앙 불꽃 블립)
 FAVICON_SVG = (
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">'
@@ -440,6 +445,7 @@ def product_page_html(deal, chart_svg):
 <meta name="twitter:title" content="{name}">
 <meta name="twitter:description" content="{desc}">
 <meta name="twitter:image" content="{thumb}">
+{ANALYTICS}
 <style>{DETAIL_CSS}</style>
 </head>
 <body>
@@ -530,7 +536,8 @@ def render(deals, generated_at):
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="핫딜 모음 · 토스쇼핑 반값 특가 | {SITE_NAME}">
 <meta name="twitter:description" content="토스쇼핑 반값 이하 핫딜 특가 {n_all}개를 자동으로 모읍니다.">
-{jsonld}<style>
+{jsonld}{ANALYTICS}
+<style>
 :root{{
   --bg:#eef2f8; --panel:#ffffff; --line:#e3e9f2;
   --ink:#141b2e; --dim:#69718a;
