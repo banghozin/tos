@@ -24,6 +24,7 @@ ROOT = Path(__file__).parent
 OUT_DIR = ROOT / "docs"
 KST = timezone(timedelta(hours=9))
 
+
 def load_site_url():
     """배포 주소를 사이트주소.txt 에서 읽는다. (canonical/sitemap/OG 용)
 
@@ -42,9 +43,24 @@ def load_site_url():
 
 SITE_URL = load_site_url()
 SITE_NAME = "특가레이더"
-SITE_TAGLINE = "토스쇼핑 반값 이하만 골라 담는 곳"
+SITE_TAGLINE = "토스쇼핑 반값 이하 핫딜만 골라 담는 곳"
+# 검색 유입을 노리는 핵심 키워드. 제목·설명·본문에 자연스럽게 녹인다.
+SEO_KEYWORDS = ("핫딜, 핫딜모음, 핫딜 사이트, 핫딜 정보, 오늘의 핫딜, 특가, 특가모음, "
+                "반값 특가, 최저가, 토스쇼핑, 토스 특가, 할인 정보, 오늘의 특가")
 # 공정위 지침에 따른 경제적 이해관계 고지. 지정된 문구를 그대로 쓴다.
 DISCLOSURE = "✱ 이 포스팅은 토스쇼핑 쉐어링크 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다."
+
+# 라디에이더 + 불꽃 파비콘 (파란 배경, 흰 레이더 링, 중앙 불꽃 블립)
+FAVICON_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">'
+    '<rect width="64" height="64" rx="14" fill="#2f6bff"/>'
+    '<g fill="none" stroke="#ffffff" stroke-opacity=".5" stroke-width="2.4">'
+    '<circle cx="32" cy="35" r="9"/><circle cx="32" cy="35" r="17"/>'
+    '<circle cx="32" cy="35" r="25"/></g>'
+    '<path d="M32 35 L32 10 A25 25 0 0 1 55 24 Z" fill="#ffffff" fill-opacity=".18"/>'
+    '<path d="M32 21c5 4 7.5 8 7.5 12.2A7.5 7.5 0 0 1 24.5 33c0-3 1.8-5.8 4-7.8'
+    'c.2 2 1 3 2.2 3.2c1.2-2 .3-5.2 1.3-7.4z" fill="#ffffff"/></svg>'
+)
 
 
 def fetch_deals(conn, min_discount, limit):
@@ -69,16 +85,24 @@ def won(n):
     return f"{n:,}" if isinstance(n, int) else "-"
 
 
+def rate_of(deal):
+    r = deal.get("effective_rate")
+    if r is None:
+        r = deal.get("discount_rate") or 0
+    return r
+
+
+def price_of(deal):
+    return deal.get("effective_price") or deal.get("display_price") or 0
+
+
 def deadline_of(deal):
     """카운트다운에 쓸 마감 시각. 하루특가가 있으면 그쪽을 우선."""
     return deal.get("today_deal_end_at") or deal.get("campaign_end_at")
 
 
 def card_html(deal):
-    rate = deal.get("effective_rate")
-    if rate is None:
-        rate = deal.get("discount_rate") or 0
-    price = deal.get("effective_price") or deal.get("display_price") or 0
+    rate = rate_of(deal)
     name = html.escape(deal.get("display_name") or "")
     thumb = html.escape(deal.get("thumbnail_url") or "")
     url = html.escape(deal.get("short_url") or "")
@@ -101,19 +125,49 @@ def card_html(deal):
          data-rate="{rate}" data-low="{int(lowest)}" data-end="{html.escape(end or '')}"
          data-cat="{deal.get('category_l1') or ''}">
         <div class="card__media">
-          <img src="{thumb}" alt="" loading="lazy" decoding="async">
+          <img src="{thumb}" alt="{name}" loading="lazy" decoding="async">
           <div class="card__rate"><b>{rate}</b><i>%</i></div>
         </div>
         <div class="card__body">
           <p class="card__name">{name}</p>
           <div class="card__badges">{''.join(badges)}</div>
           <div class="card__price">
-            <span class="price">{won(price)}<em>원</em></span>
+            <span class="price">{won(price_of(deal))}<em>원</em></span>
             <s class="was">{won(deal.get('original_price'))}원</s>
           </div>
           <div class="card__end" data-countdown></div>
         </div>
       </a>"""
+
+
+def popular_html(deals, k=8):
+    """조회수(page_view_count) 상위 상품을 '지금 인기'로 뽑는다."""
+    ranked = sorted(
+        (d for d in deals if isinstance(d.get("page_view_count"), int)),
+        key=lambda d: d["page_view_count"], reverse=True,
+    )[:k]
+    if not ranked:
+        return ""
+    rows = []
+    for i, d in enumerate(ranked, 1):
+        name = html.escape(d.get("display_name") or "")
+        thumb = html.escape(d.get("thumbnail_url") or "")
+        url = html.escape(d.get("short_url") or "")
+        rows.append(f"""
+        <a class="pop" href="{url}" target="_blank" rel="nofollow sponsored noopener">
+          <span class="pop__rank">{i}</span>
+          <img src="{thumb}" alt="{name}" loading="lazy">
+          <span class="pop__info">
+            <span class="pop__name">{name}</span>
+            <span class="pop__price"><b>{rate_of(d)}%</b> {won(price_of(d))}원</span>
+          </span>
+        </a>""")
+    return f"""
+      <aside class="popular" aria-label="지금 인기 특가">
+        <h2>🔥 지금 인기 특가</h2>
+        <p class="popular__note">토스쇼핑에서 많이 본 상품 순</p>
+        <div class="popular__list">{''.join(rows)}</div>
+      </aside>"""
 
 
 def category_chips(deals):
@@ -134,35 +188,27 @@ def category_chips(deals):
     return "".join(chips)
 
 
-def seo_head(deals, generated_at):
+def seo_head(deals):
     """canonical 링크와 JSON-LD 구조화 데이터를 만든다. SITE_URL 없으면 canonical 생략."""
     canonical = f'<link rel="canonical" href="{SITE_URL}/">\n' if SITE_URL else ""
     if SITE_URL:
         canonical += f'<meta property="og:url" content="{SITE_URL}/">\n'
         canonical += f'<meta property="og:image" content="{SITE_URL}/og.png">\n'
 
-    # ItemList: 상위 딜을 검색엔진이 목록으로 인식하도록. 가격은 표기하지 않는다
-    # (실제 판매자가 우리가 아니고 가격이 자주 바뀌므로 오해 소지를 피한다).
     items = []
     for i, d in enumerate(deals[:30], 1):
         name = json.dumps(d.get("display_name") or "", ensure_ascii=False)
         url = json.dumps(d.get("short_url") or "", ensure_ascii=False)
-        items.append(
-            f'{{"@type":"ListItem","position":{i},"name":{name},"url":{url}}}'
-        )
-    website = {
-        "@context": "https://schema.org",
-        "@type": "WebSite",
-        "name": SITE_NAME,
-        "description": SITE_TAGLINE,
-    }
+        items.append(f'{{"@type":"ListItem","position":{i},"name":{name},"url":{url}}}')
+    website = {"@context": "https://schema.org", "@type": "WebSite",
+               "name": SITE_NAME, "description": SITE_TAGLINE}
     if SITE_URL:
         website["url"] = SITE_URL + "/"
     ld = (
         f'<script type="application/ld+json">{json.dumps(website, ensure_ascii=False)}</script>\n'
         f'<script type="application/ld+json">'
         f'{{"@context":"https://schema.org","@type":"ItemList",'
-        f'"name":"토스쇼핑 특가 모음","numberOfItems":{len(deals)},'
+        f'"name":"토스쇼핑 핫딜 특가 모음","numberOfItems":{len(deals)},'
         f'"itemListElement":[{",".join(items)}]}}</script>\n'
     )
     return canonical, ld
@@ -170,186 +216,199 @@ def seo_head(deals, generated_at):
 
 def render(deals, generated_at):
     cards = "".join(card_html(d) for d in deals)
+    popular = popular_html(deals)
     n_all = len(deals)
     n70 = sum(1 for d in deals if (d.get("effective_rate") or 0) >= 70)
     n_low = sum(1 for d in deals if d.get("is_lowest_30d"))
     cat_chips = category_chips(deals)
-    canonical, jsonld = seo_head(deals, generated_at)
+    canonical, jsonld = seo_head(deals)
 
     return f"""<!doctype html>
 <html lang="ko">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0b0b0c">
+<meta name="theme-color" content="#2f6bff">
 <meta name="format-detection" content="telephone=no">
-<title>{SITE_NAME} — {SITE_TAGLINE}</title>
-<meta name="description" content="토스쇼핑에서 50% 이상 할인되거나 30일 최저가인 상품만 자동으로 모읍니다. {generated_at} 기준 {n_all}개.">
+<title>핫딜 모음 · 토스쇼핑 반값 특가 | {SITE_NAME}</title>
+<meta name="description" content="핫딜 모음 사이트 {SITE_NAME}. 토스쇼핑에서 50% 이상 할인되거나 30일 최저가인 상품만 자동으로 모아 보여줍니다. {generated_at} 기준 {n_all}개 특가 업데이트.">
+<meta name="keywords" content="{SEO_KEYWORDS}">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="favicon.svg">
 {canonical}<meta property="og:type" content="website">
 <meta property="og:site_name" content="{SITE_NAME}">
-<meta property="og:title" content="{SITE_NAME} — {SITE_TAGLINE}">
+<meta property="og:title" content="핫딜 모음 · 토스쇼핑 반값 특가 | {SITE_NAME}">
 <meta property="og:description" content="토스쇼핑 50% 이상 할인 · 30일 최저가 {n_all}개 · {generated_at} 갱신">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="{SITE_NAME} — {SITE_TAGLINE}">
-<meta name="twitter:description" content="토스쇼핑 반값 이하 특가 {n_all}개를 자동으로 모읍니다.">
-{jsonld}<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
-<style>
+<meta name="twitter:title" content="핫딜 모음 · 토스쇼핑 반값 특가 | {SITE_NAME}">
+<meta name="twitter:description" content="토스쇼핑 반값 이하 핫딜 특가 {n_all}개를 자동으로 모읍니다.">
+{jsonld}<style>
 :root{{
-  --bg:#0b0b0c; --panel:#141416; --line:#26262a;
-  --ink:#f2f2ef; --dim:#8b8b93;
-  --acid:#d8ff3e; --hot:#ff4a2b;
-  --font-kr:"Pretendard Variable",Pretendard,sans-serif;
-  --font-num:"IBM Plex Mono",monospace;
-  --font-display:"Anton",var(--font-kr);
+  --bg:#eef2f8; --panel:#ffffff; --line:#e3e9f2;
+  --ink:#141b2e; --dim:#69718a;
+  --blue:#2f6bff; --blue-ink:#1b4fd8; --blue-soft:#eaf1ff;
+  --hot:#e5484d; --ok:#0a9d6e;
+  --font:"Malgun Gothic","맑은 고딕","Apple SD Gothic Neo",system-ui,-apple-system,sans-serif;
 }}
 *{{box-sizing:border-box;margin:0;padding:0}}
-html{{-webkit-text-size-adjust:100%}}
+html{{-webkit-text-size-adjust:100%;scroll-behavior:smooth}}
 body{{
-  background:var(--bg); color:var(--ink); font-family:var(--font-kr);
+  background:var(--bg); color:var(--ink); font-family:var(--font);
   font-size:15px; line-height:1.5; letter-spacing:-.01em;
-  overflow-x:hidden;  /* 가로 스크롤 방지 */
-  -webkit-tap-highlight-color:transparent;
-  background-image:
-    radial-gradient(900px 380px at 82% -8%, rgba(216,255,62,.09), transparent 62%),
-    radial-gradient(700px 320px at 8% 0%, rgba(255,74,43,.07), transparent 60%);
-  background-repeat:no-repeat;
+  overflow-x:hidden; -webkit-tap-highlight-color:transparent;
 }}
-/* 미세한 그레인 — 평평한 검정을 피한다 */
-body::before{{
-  content:"";position:fixed;inset:0;pointer-events:none;z-index:9;opacity:.16;
-  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/></filter><rect width='140' height='140' filter='url(%23n)' opacity='.5'/></svg>");
-  mix-blend-mode:overlay;
+a{{color:inherit}}
+.wrap{{
+  max-width:1200px; margin:0 auto;
+  padding-left:max(16px,env(safe-area-inset-left));
+  padding-right:max(16px,env(safe-area-inset-right));
 }}
-.wrap{{max-width:1180px;margin:0 auto;padding:0 16px}}
 
-.wrap{{padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right))}}
-
-/* ── 헤더: 전광판 ── */
-header{{padding:34px 0 18px;border-bottom:1px solid var(--line)}}
-.brand{{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}}
-.brand h1{{
-  font-family:var(--font-display);font-size:clamp(34px,8vw,60px);
-  letter-spacing:.02em;line-height:.92;text-transform:uppercase;
-}}
-.brand h1 span{{color:var(--acid)}}
-.brand p{{color:var(--dim);font-size:13px}}
-.stats{{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;font-family:var(--font-num)}}
+/* ── 헤더 ── */
+header{{padding:26px 0 16px}}
+.brand{{display:flex;align-items:center;gap:11px}}
+.brand__mark{{width:38px;height:38px;border-radius:10px;flex:0 0 auto;box-shadow:0 4px 12px rgba(47,107,255,.28)}}
+.brand h1{{font-size:clamp(22px,5vw,30px);font-weight:800;letter-spacing:-.02em}}
+.brand h1 span{{color:var(--blue)}}
+.intro{{margin-top:10px;color:var(--dim);font-size:14px;line-height:1.6;max-width:640px}}
+.stats{{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}}
 .stat{{
-  border:1px solid var(--line);background:var(--panel);
-  padding:7px 11px;font-size:12px;color:var(--dim);
+  border:1px solid var(--line);background:var(--panel);border-radius:10px;
+  padding:8px 12px;font-size:12.5px;color:var(--dim);font-weight:600;
 }}
-.stat b{{color:var(--acid);font-weight:700}}
+.stat b{{color:var(--blue);font-weight:800}}
 
 /* ── 필터 ── */
 .filterbar{{
-  position:sticky;top:0;z-index:8;
-  background:rgba(11,11,12,.94);backdrop-filter:blur(10px);
+  position:sticky;top:0;z-index:8;margin-top:14px;
+  background:rgba(238,242,248,.94);backdrop-filter:blur(10px);
   border-bottom:1px solid var(--line);
 }}
-.filters{{
-  display:flex;gap:7px;overflow-x:auto;padding:12px 0 0;
-  scrollbar-width:none;-webkit-overflow-scrolling:touch;
-}}
-.filters--cat{{padding:8px 0 12px;border-top:1px dashed #1f1f23;margin-top:10px}}
+.filters{{display:flex;gap:7px;overflow-x:auto;padding:12px 0 0;scrollbar-width:none;-webkit-overflow-scrolling:touch}}
+.filters--cat{{padding:8px 0 12px;border-top:1px dashed var(--line);margin-top:10px}}
 .filters::-webkit-scrollbar{{display:none}}
-.chip__n{{opacity:.5;font-size:10px;margin-left:3px}}
-.chip[aria-pressed="true"] .chip__n{{opacity:.6}}
-.count{{
-  font-family:var(--font-num);font-size:12px;color:var(--dim);
-  padding:14px 0 0;
-}}
 .chip{{
-  flex:0 0 auto;border:1px solid var(--line);background:transparent;color:var(--dim);
-  font-family:var(--font-num);font-size:12px;font-weight:500;
-  padding:8px 13px;cursor:pointer;white-space:nowrap;transition:.15s;
+  flex:0 0 auto;border:1px solid var(--line);background:var(--panel);color:var(--dim);
+  font-family:inherit;font-size:13px;font-weight:700;border-radius:999px;
+  padding:9px 15px;cursor:pointer;white-space:nowrap;transition:.15s;
 }}
-.chip:hover{{color:var(--ink);border-color:#3a3a41}}
-.chip[aria-pressed="true"]{{background:var(--acid);color:#0b0b0c;border-color:var(--acid);font-weight:700}}
+.chip:hover{{color:var(--ink);border-color:#c6d2e6}}
+.chip[aria-pressed="true"]{{background:var(--blue);color:#fff;border-color:var(--blue)}}
+.chip__n{{opacity:.55;font-size:11px;margin-left:3px;font-weight:600}}
+.count{{font-size:13px;color:var(--dim);font-weight:600;padding:14px 0 0}}
 
-/* ── 카드 ── */
+/* ── 레이아웃: 본문 + 인기 사이드 ── */
+.layout{{display:grid;grid-template-columns:1fr 296px;gap:20px;align-items:start;margin:14px 0 40px}}
+
+/* ── 인기 사이드 ── */
+.popular{{
+  position:sticky;top:118px;background:var(--panel);
+  border:1px solid var(--line);border-radius:16px;padding:16px 16px 6px;
+  box-shadow:0 2px 10px rgba(20,27,46,.04);
+}}
+.popular h2{{font-size:15px;font-weight:800}}
+.popular__note{{font-size:11.5px;color:var(--dim);margin:3px 0 10px}}
+.popular__list{{display:flex;flex-direction:column}}
+.pop{{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line);text-decoration:none}}
+.pop:first-child{{border-top:none}}
+.pop__rank{{
+  flex:0 0 auto;width:20px;text-align:center;font-weight:800;font-size:14px;color:var(--blue);
+}}
+.pop img{{width:46px;height:46px;border-radius:9px;object-fit:cover;flex:0 0 auto;background:#f0f3f8}}
+.pop__info{{display:flex;flex-direction:column;gap:2px;min-width:0}}
+.pop__name{{font-size:12.5px;line-height:1.35;color:var(--ink);
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}}
+.pop__price{{font-size:12.5px;color:var(--dim);font-weight:600}}
+.pop__price b{{color:var(--hot);font-weight:800;margin-right:3px}}
+
+/* ── 카드 그리드 ── */
 .grid{{
-  display:grid;gap:1px;background:var(--line);
-  border:1px solid var(--line);margin:20px 0 40px;
-  grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr));
+  display:grid;gap:12px;
+  grid-template-columns:repeat(auto-fill,minmax(min(100%,220px),1fr));
 }}
 .card{{
-  background:var(--bg);color:inherit;text-decoration:none;display:flex;flex-direction:column;
-  transition:background .18s, transform .18s;
-  animation:rise .5s both;
+  background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;
+  text-decoration:none;display:flex;flex-direction:column;
+  transition:box-shadow .18s, transform .18s, border-color .18s; animation:rise .5s both;
 }}
-.card:hover{{background:var(--panel)}}
-/* display:flex 가 [hidden] 의 display:none 을 덮어쓰므로 명시적으로 눌러준다 */
+.card:hover{{box-shadow:0 10px 26px rgba(20,27,46,.10);border-color:#cfd9ea}}
 .card[hidden]{{display:none}}
-@media(hover:hover){{ .card:hover{{transform:translateY(-2px)}} }}
+@media(hover:hover){{ .card:hover{{transform:translateY(-3px)}} }}
 @keyframes rise{{from{{opacity:0;transform:translateY(10px)}}to{{opacity:1;transform:none}}}}
-.card__media{{position:relative;aspect-ratio:1/1;overflow:hidden;background:#101012}}
+.card__media{{position:relative;aspect-ratio:1/1;overflow:hidden;background:#f0f3f8}}
 .card__media img{{width:100%;height:100%;object-fit:cover;transition:transform .5s ease}}
 .card:hover .card__media img{{transform:scale(1.05)}}
 .card__rate{{
-  position:absolute;left:0;bottom:0;background:var(--acid);color:#0b0b0c;
-  font-family:var(--font-display);display:flex;align-items:baseline;
-  padding:5px 10px 3px;letter-spacing:.01em;
+  position:absolute;left:10px;top:10px;background:var(--blue);color:#fff;
+  display:flex;align-items:baseline;padding:4px 9px;border-radius:9px;font-weight:800;
+  box-shadow:0 3px 10px rgba(47,107,255,.35);
 }}
-.card__rate b{{font-size:27px;line-height:1;font-weight:400}}
-.card__rate i{{font-size:14px;font-style:normal;margin-left:1px}}
+.card__rate b{{font-size:19px;line-height:1;font-weight:800}}
+.card__rate i{{font-size:11px;font-style:normal;margin-left:1px}}
 .card__body{{padding:12px 13px 14px;display:flex;flex-direction:column;gap:8px;flex:1}}
 .card__name{{
-  font-size:13px;line-height:1.42;color:#dcdcd8;
+  font-size:13.5px;line-height:1.42;color:var(--ink);font-weight:500;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
 }}
 .card__badges{{display:flex;flex-wrap:wrap;gap:4px}}
 .badge{{
-  font-family:var(--font-num);font-size:10px;font-weight:500;
-  border:1px solid var(--line);color:var(--dim);padding:2px 6px;
+  font-size:11px;font-weight:700;border-radius:6px;
+  border:1px solid var(--line);color:var(--dim);padding:3px 7px;
 }}
-.badge--low{{border-color:var(--acid);color:var(--acid)}}
-.badge--quiet{{opacity:.65}}
-.card__price{{margin-top:auto;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}}
-.price{{font-family:var(--font-num);font-weight:700;font-size:21px;color:var(--ink)}}
-.price em{{font-style:normal;font-size:12px;font-weight:500;margin-left:1px}}
-.was{{font-family:var(--font-num);font-size:12px;color:#5f5f68}}
-.card__end{{font-family:var(--font-num);font-size:11px;color:var(--dim);min-height:1em}}
-.card__end.urgent{{color:var(--hot)}}
+.badge--low{{border-color:var(--ok);color:var(--ok);background:#eafaf3}}
+.badge--quiet{{color:var(--dim);font-weight:600}}
+.card__price{{margin-top:auto;display:flex;align-items:baseline;gap:7px;flex-wrap:wrap}}
+.price{{font-weight:800;font-size:21px;color:var(--ink)}}
+.price em{{font-style:normal;font-size:12px;font-weight:600;margin-left:1px}}
+.was{{font-size:12.5px;color:#9aa2b5}}
+.card__end{{font-size:11.5px;color:var(--dim);font-weight:600;min-height:1em}}
+.card__end.urgent{{color:var(--hot);font-weight:700}}
 
-.empty{{padding:60px 0;text-align:center;color:var(--dim);font-family:var(--font-num);font-size:13px}}
+.empty{{padding:60px 0;text-align:center;color:var(--dim);font-size:14px}}
 
-footer{{border-top:1px solid var(--line);padding:24px 0 60px;color:var(--dim);font-size:12px}}
-/* 법적 고지 — 또렷하게 보이도록 밝은 글자색과 강조 테두리 */
+/* ── 맨 위로 버튼 ── */
+.totop{{
+  position:fixed;right:16px;bottom:max(16px,env(safe-area-inset-bottom));
+  width:50px;height:50px;border-radius:50%;border:none;cursor:pointer;
+  background:var(--blue);color:#fff;font-size:22px;line-height:50px;
+  box-shadow:0 8px 22px rgba(47,107,255,.45);
+  opacity:0;transform:translateY(12px);pointer-events:none;transition:.25s;z-index:20;
+}}
+.totop.show{{opacity:1;transform:none;pointer-events:auto}}
+.totop:active{{transform:scale(.92)}}
+
+footer{{border-top:1px solid var(--line);padding:24px 0 90px;color:var(--dim);font-size:12.5px}}
 .disclosure{{
-  border:1px solid var(--acid);border-left-width:4px;background:var(--panel);
-  color:var(--ink);font-size:14px;font-weight:500;
+  border:1px solid var(--blue);border-left-width:4px;background:var(--blue-soft);
+  color:var(--ink);font-size:14px;font-weight:600;border-radius:10px;
   padding:14px 16px;margin-bottom:14px;line-height:1.6;
 }}
-/* ── 태블릿 ── */
-@media(max-width:760px){{
-  header{{padding:24px 0 14px}}
-  .chip{{padding:9px 14px}}          /* 손가락 탭 영역 확대 */
+
+/* ── 태블릿: 인기 패널을 위로 가로 스크롤 ── */
+@media(max-width:900px){{
+  .layout{{grid-template-columns:1fr}}
+  .popular{{position:static;order:-1;padding:14px}}
+  .popular__list{{flex-direction:row;overflow-x:auto;gap:10px;scrollbar-width:none}}
+  .popular__list::-webkit-scrollbar{{display:none}}
+  .pop{{flex:0 0 210px;border-top:none;border:1px solid var(--line);border-radius:11px;padding:9px}}
+  .pop:first-child{{border:1px solid var(--line)}}
 }}
 
 /* ── 폰 ── */
 @media(max-width:560px){{
   body{{font-size:14px}}
-  .grid{{grid-template-columns:repeat(2,1fr)}}
-  .card__media .card__rate b{{font-size:23px}}
-  .card__body{{padding:10px 10px 12px;gap:6px}}
-  .card__name{{font-size:12px}}
-  .price{{font-size:17px}}
-  .was{{font-size:11px}}
-  .badge--quiet{{display:none}}      /* 좁은 화면에선 리뷰 배지 숨겨 밀도 확보 */
-  .stats{{gap:6px}}
-  .stat{{padding:6px 9px;font-size:11px}}
-  .filters--cat{{padding:7px 0 10px}}
+  .grid{{grid-template-columns:repeat(2,1fr);gap:10px}}
+  .card__rate b{{font-size:17px}}
+  .card__body{{padding:10px 11px 12px;gap:6px}}
+  .card__name{{font-size:12.5px}}
+  .price{{font-size:18px}}
+  .badge--quiet{{display:none}}
+  .stat{{padding:7px 10px;font-size:12px}}
 }}
-
-/* ── 작은 폰 (iPhone SE 등) ── */
 @media(max-width:360px){{
-  .brand h1{{font-size:30px}}
   .card__body{{padding:9px}}
 }}
-@media(prefers-reduced-motion:reduce){{ *{{animation:none!important;transition:none!important}} }}
+@media(prefers-reduced-motion:reduce){{ *{{animation:none!important;transition:none!important;scroll-behavior:auto!important}} }}
 </style>
 </head>
 <body>
@@ -357,9 +416,13 @@ footer{{border-top:1px solid var(--line);padding:24px 0 60px;color:var(--dim);fo
 
   <header>
     <div class="brand">
+      <img class="brand__mark" src="favicon.svg" alt="" width="38" height="38">
       <h1>특가<span>레이더</span></h1>
-      <p>{SITE_TAGLINE}</p>
     </div>
+    <p class="intro">
+      토스쇼핑 <b>핫딜</b>을 자동으로 모으는 <b>핫딜 모음 사이트</b>예요.
+      50% 이상 할인되거나 30일 최저가인 상품만 골라, 하루에도 여러 번 새로 갱신합니다.
+    </p>
     <div class="stats">
       <div class="stat">갱신 <b>{generated_at}</b></div>
       <div class="stat">전체 <b>{n_all}</b></div>
@@ -381,8 +444,14 @@ footer{{border-top:1px solid var(--line);padding:24px 0 60px;color:var(--dim);fo
   </div>
 
   <p class="count" id="count"></p>
-  <main class="grid" id="grid">{cards}</main>
-  <p class="empty" id="empty" hidden>조건에 맞는 딜이 없어요.</p>
+
+  <div class="layout">
+    <main>
+      <div class="grid" id="grid">{cards}</div>
+      <p class="empty" id="empty" hidden>조건에 맞는 딜이 없어요.</p>
+    </main>
+    {popular}
+  </div>
 
   <footer>
     <p class="disclosure">{DISCLOSURE}</p>
@@ -390,25 +459,23 @@ footer{{border-top:1px solid var(--line);padding:24px 0 60px;color:var(--dim);fo
   </footer>
 </div>
 
+<button class="totop" id="totop" aria-label="맨 위로">↑</button>
+
 <script>
 (function(){{
   var grid=document.getElementById('grid'),
       cards=[].slice.call(grid.children),
       empty=document.getElementById('empty');
 
-  // API 의 마감 시각은 타임존이 없는 경우가 있다. 없으면 KST 로 본다.
   function endMs(s){{
     if(!s) return NaN;
     return new Date(/[Z+]|-\\d\\d:\\d\\d$/.test(s) ? s : s+'+09:00').getTime();
   }}
-  // 브라우저 시간대와 무관하게 '한국 기준 오늘'
   function kstToday(){{ return new Date(Date.now()+9*36e5).toISOString().slice(0,10); }}
 
-  // 로드 시 계단식 등장 (초반 몇 개만 — 전부 지연시키면 느리게 느껴진다)
   cards.slice(0,12).forEach(function(c,i){{ c.style.animationDelay=(i*28)+'ms'; }});
 
   var fRate='all', fCat='all', countEl=document.getElementById('count');
-
   function apply(){{
     var today=kstToday(), shown=0;
     cards.forEach(function(c){{
@@ -423,7 +490,6 @@ footer{{border-top:1px solid var(--line);padding:24px 0 60px;color:var(--dim);fo
     empty.hidden=shown>0;
     countEl.textContent=shown+'개';
   }}
-
   function bind(id, set){{
     document.getElementById(id).addEventListener('click', function(e){{
       var btn=e.target.closest('.chip'); if(!btn) return;
@@ -449,6 +515,14 @@ footer{{border-top:1px solid var(--line);padding:24px 0 60px;color:var(--dim);fo
     }});
   }}
   tick(); setInterval(tick, 30000);
+
+  // 맨 위로 버튼
+  var totop=document.getElementById('totop');
+  function onScroll(){{ totop.classList.toggle('show', window.scrollY>500); }}
+  window.addEventListener('scroll', onScroll, {{passive:true}}); onScroll();
+  totop.addEventListener('click', function(){{
+    window.scrollTo({{top:0, behavior:'smooth'}});
+  }});
 }})();
 </script>
 </body>
@@ -475,15 +549,14 @@ def main():
     now_iso = datetime.now(KST).strftime("%Y-%m-%d")
     OUT_DIR.mkdir(exist_ok=True)
     (OUT_DIR / "index.html").write_text(render(deals, generated_at), encoding="utf-8")
+    (OUT_DIR / "favicon.svg").write_text(FAVICON_SVG, encoding="utf-8")
     (OUT_DIR / ".nojekyll").write_text("", encoding="utf-8")
 
-    # robots.txt: 크롤러 전면 허용 + sitemap 위치
     robots = "User-agent: *\nAllow: /\n"
     if SITE_URL:
         robots += f"Sitemap: {SITE_URL}/sitemap.xml\n"
     (OUT_DIR / "robots.txt").write_text(robots, encoding="utf-8")
 
-    # sitemap.xml: 도메인이 있을 때만. 단일 페이지라 홈 하나.
     if SITE_URL:
         (OUT_DIR / "sitemap.xml").write_text(
             '<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -497,7 +570,7 @@ def main():
     size = (OUT_DIR / "index.html").stat().st_size
     where = SITE_URL or "(사이트주소.txt 비어있음 — 상대경로)"
     print(f"[+] docs/index.html 생성 · 딜 {len(deals)}개 · {size/1024:.0f}KB")
-    print(f"    robots.txt · {'sitemap.xml · ' if SITE_URL else ''}주소: {where}")
+    print(f"    favicon.svg · robots.txt · {'sitemap.xml · ' if SITE_URL else ''}주소: {where}")
 
 
 if __name__ == "__main__":
