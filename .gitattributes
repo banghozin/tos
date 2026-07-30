@@ -1,0 +1,9 @@
+# GitHub Actions 는 우분투에서 돈다. 셸 스크립트에 CRLF 가 들어가면
+# 줄 끝의 \r 때문에 "command not found" 로 깨진다. LF 로 고정한다.
+* text=auto eol=lf
+
+# 윈도우에서 실행하는 배치 파일만 CRLF
+*.bat text eol=crlf
+
+# SQLite DB 는 절대 텍스트 변환하지 않는다
+*.db binary

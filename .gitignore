@@ -1,0 +1,12 @@
+.env
+snapshots/
+__pycache__/
+*.pyc
+links.txt
+run.log
+new_deals.txt
+price_drops.txt
+
+# deals.db 는 일부러 커밋한다.
+# GitHub Actions 실행 사이에 링크 캐시와 가격 이력이 이어져야 하기 때문.
+# 토큰은 .env 에만 있고 DB 에는 없다.
