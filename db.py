@@ -154,6 +154,17 @@ def upsert_product(conn, row, observed_at):
     )
 
 
+def prune_observations_before(conn, cutoff_iso):
+    """cutoff_iso(ISO 문자열) 이전의 관측 이력을 삭제한다. 분기 보관/롤오버용.
+
+    observed_at 은 전부 동일한 +09:00 오프셋 ISO 문자열이라 사전식 비교가 안전하다.
+    (분기가 바뀌면 지난 분기 데이터가 지워져 가격 그래프가 새 분기 기준으로 초기화된다.)
+    """
+    cur = conn.execute("DELETE FROM observations WHERE observed_at < ?", (cutoff_iso,))
+    conn.commit()
+    return cur.rowcount
+
+
 def put_categories(conn, tabs):
     """[{'tabCode': '50995', 'displayName': '식품'}, ...] 를 저장한다."""
     for t in tabs:

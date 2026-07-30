@@ -218,6 +218,17 @@ def main():
     observed_at = now.isoformat()
 
     conn = db.connect()
+
+    # 분기별 보관. 이번 분기 시작(1/1·4/1·7/1·10/1) 이전의 관측 이력은 지운다.
+    # 다음 분기로 넘어가면 지난 분기 데이터가 비워져 가격 그래프가 초기화된다.
+    q_start_month = ((now.month - 1) // 3) * 3 + 1
+    quarter_start = now.replace(
+        month=q_start_month, day=1, hour=0, minute=0, second=0, microsecond=0
+    ).isoformat()
+    pruned = db.prune_observations_before(conn, quarter_start)
+    if pruned:
+        print(f"[+] 지난 분기 관측 {pruned}개 정리 · 이번 분기({quarter_start[:10]}~) 데이터만 유지")
+
     total = 0
 
     for i, surface in enumerate(surfaces):

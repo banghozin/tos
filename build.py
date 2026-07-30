@@ -68,8 +68,9 @@ SITE_TAGLINE = "토스쇼핑 반값 이하 핫딜만 골라 담는 곳"
 # 검색 유입을 노리는 핵심 키워드. 제목·설명·본문에 자연스럽게 녹인다.
 SEO_KEYWORDS = ("핫딜, 핫딜모음, 핫딜 사이트, 핫딜 정보, 오늘의 핫딜, 특가, 특가모음, "
                 "반값 특가, 최저가, 토스쇼핑, 토스 특가, 할인 정보, 오늘의 특가")
-# 공정위 지침에 따른 경제적 이해관계 고지. 지정된 문구를 그대로 쓴다.
-DISCLOSURE = "✱ 이 포스팅은 토스쇼핑 쉐어링크 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다."
+# 공정위 지침에 따른 경제적 이해관계 고지. 토스가 요구하는 핵심 문구는 유지하되,
+# 블로그 글이 아니라 사이트이므로 '이 포스팅은' → '이 사이트는' 으로 맞춘다.
+DISCLOSURE = "✱ 이 사이트는 토스쇼핑 쉐어링크 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다."
 
 # 라디에이더 + 불꽃 파비콘 (파란 배경, 흰 레이더 링, 중앙 불꽃 블립)
 FAVICON_SVG = (
@@ -319,8 +320,12 @@ footer{border-top:1px solid var(--line);margin-top:22px;padding:18px 0 60px;
 """
 
 
-def fetch_price_history(conn, product_id, cap=60):
-    """observations 에 쌓인 실구매가 이력을 시간순으로 가져온다(최근 cap개)."""
+def fetch_price_history(conn, product_id, cap=400):
+    """observations 에 쌓인 실구매가 이력을 시간순으로 가져온다(최근 cap개).
+
+    관측은 collect.py 에서 분기 단위로 보관하므로(하루 4회 × ~90일 ≈ 360개) cap 400 이면
+    이번 분기 전체가 그래프에 담긴다. 정적 SVG 라 점이 수백 개여도 렌더 부하는 없다.
+    """
     rows = conn.execute(
         """SELECT observed_at, effective_price FROM observations
            WHERE product_id=? AND effective_price IS NOT NULL
