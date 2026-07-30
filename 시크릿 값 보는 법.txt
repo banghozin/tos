@@ -1,0 +1,8 @@
+https://sharelink.toss.im/ 접속
+F12 누르고 상단의 어플리케이션 클릭
+
+왼쪽에 Cookies 화살표 눌러서 https://sharelink.toss.im/ 선택
+
+
+name 탭을 보면
+TBIZAUTH, TGSID이 있는데 그 옆의 Value값을 더블클릭 -> 복사하기

@@ -24,6 +24,23 @@ ROOT = Path(__file__).parent
 OUT_DIR = ROOT / "docs"
 KST = timezone(timedelta(hours=9))
 
+def load_site_url():
+    """배포 주소를 사이트주소.txt 에서 읽는다. (canonical/sitemap/OG 용)
+
+    도메인을 사거나 바꾸면 이 파일 한 줄만 고치면 된다.
+    비어 있으면 상대경로로 동작하고 sitemap 은 만들지 않는다.
+    """
+    f = ROOT / "사이트주소.txt"
+    if not f.exists():
+        return ""
+    for line in f.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line and not line.startswith("#"):
+            return line.rstrip("/")
+    return ""
+
+
+SITE_URL = load_site_url()
 SITE_NAME = "특가레이더"
 SITE_TAGLINE = "토스쇼핑 반값 이하만 골라 담는 곳"
 DISCLOSURE = ("이 사이트는 토스쇼핑 쉐어링크 활동의 일환으로, "
@@ -118,23 +135,65 @@ def category_chips(deals):
     return "".join(chips)
 
 
+def seo_head(deals, generated_at):
+    """canonical 링크와 JSON-LD 구조화 데이터를 만든다. SITE_URL 없으면 canonical 생략."""
+    canonical = f'<link rel="canonical" href="{SITE_URL}/">\n' if SITE_URL else ""
+    if SITE_URL:
+        canonical += f'<meta property="og:url" content="{SITE_URL}/">\n'
+        canonical += f'<meta property="og:image" content="{SITE_URL}/og.png">\n'
+
+    # ItemList: 상위 딜을 검색엔진이 목록으로 인식하도록. 가격은 표기하지 않는다
+    # (실제 판매자가 우리가 아니고 가격이 자주 바뀌므로 오해 소지를 피한다).
+    items = []
+    for i, d in enumerate(deals[:30], 1):
+        name = json.dumps(d.get("display_name") or "", ensure_ascii=False)
+        url = json.dumps(d.get("short_url") or "", ensure_ascii=False)
+        items.append(
+            f'{{"@type":"ListItem","position":{i},"name":{name},"url":{url}}}'
+        )
+    website = {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": SITE_NAME,
+        "description": SITE_TAGLINE,
+    }
+    if SITE_URL:
+        website["url"] = SITE_URL + "/"
+    ld = (
+        f'<script type="application/ld+json">{json.dumps(website, ensure_ascii=False)}</script>\n'
+        f'<script type="application/ld+json">'
+        f'{{"@context":"https://schema.org","@type":"ItemList",'
+        f'"name":"토스쇼핑 특가 모음","numberOfItems":{len(deals)},'
+        f'"itemListElement":[{",".join(items)}]}}</script>\n'
+    )
+    return canonical, ld
+
+
 def render(deals, generated_at):
     cards = "".join(card_html(d) for d in deals)
     n_all = len(deals)
     n70 = sum(1 for d in deals if (d.get("effective_rate") or 0) >= 70)
     n_low = sum(1 for d in deals if d.get("is_lowest_30d"))
     cat_chips = category_chips(deals)
+    canonical, jsonld = seo_head(deals, generated_at)
 
     return f"""<!doctype html>
 <html lang="ko">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0b0c">
+<meta name="format-detection" content="telephone=no">
 <title>{SITE_NAME} — {SITE_TAGLINE}</title>
 <meta name="description" content="토스쇼핑에서 50% 이상 할인되거나 30일 최저가인 상품만 자동으로 모읍니다. {generated_at} 기준 {n_all}개.">
-<meta property="og:title" content="{SITE_NAME}">
-<meta property="og:description" content="{SITE_TAGLINE} · {n_all}개 갱신됨">
-<link rel="preconnect" href="https://fonts.googleapis.com">
+{canonical}<meta property="og:type" content="website">
+<meta property="og:site_name" content="{SITE_NAME}">
+<meta property="og:title" content="{SITE_NAME} — {SITE_TAGLINE}">
+<meta property="og:description" content="토스쇼핑 50% 이상 할인 · 30일 최저가 {n_all}개 · {generated_at} 갱신">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{SITE_NAME} — {SITE_TAGLINE}">
+<meta name="twitter:description" content="토스쇼핑 반값 이하 특가 {n_all}개를 자동으로 모읍니다.">
+{jsonld}<link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
@@ -152,6 +211,8 @@ html{{-webkit-text-size-adjust:100%}}
 body{{
   background:var(--bg); color:var(--ink); font-family:var(--font-kr);
   font-size:15px; line-height:1.5; letter-spacing:-.01em;
+  overflow-x:hidden;  /* 가로 스크롤 방지 */
+  -webkit-tap-highlight-color:transparent;
   background-image:
     radial-gradient(900px 380px at 82% -8%, rgba(216,255,62,.09), transparent 62%),
     radial-gradient(700px 320px at 8% 0%, rgba(255,74,43,.07), transparent 60%);
@@ -164,6 +225,8 @@ body::before{{
   mix-blend-mode:overlay;
 }}
 .wrap{{max-width:1180px;margin:0 auto;padding:0 16px}}
+
+.wrap{{padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right))}}
 
 /* ── 헤더: 전광판 ── */
 header{{padding:34px 0 18px;border-bottom:1px solid var(--line)}}
@@ -259,10 +322,31 @@ footer{{border-top:1px solid var(--line);padding:24px 0 60px;color:var(--dim);fo
   border:1px solid var(--line);background:var(--panel);
   padding:12px 14px;margin-bottom:14px;line-height:1.6;
 }}
-@media(max-width:520px){{
+/* ── 태블릿 ── */
+@media(max-width:760px){{
+  header{{padding:24px 0 14px}}
+  .chip{{padding:9px 14px}}          /* 손가락 탭 영역 확대 */
+}}
+
+/* ── 폰 ── */
+@media(max-width:560px){{
+  body{{font-size:14px}}
   .grid{{grid-template-columns:repeat(2,1fr)}}
-  .card__body{{padding:10px 10px 12px}}
-  .price{{font-size:18px}}
+  .card__media .card__rate b{{font-size:23px}}
+  .card__body{{padding:10px 10px 12px;gap:6px}}
+  .card__name{{font-size:12px}}
+  .price{{font-size:17px}}
+  .was{{font-size:11px}}
+  .badge--quiet{{display:none}}      /* 좁은 화면에선 리뷰 배지 숨겨 밀도 확보 */
+  .stats{{gap:6px}}
+  .stat{{padding:6px 9px;font-size:11px}}
+  .filters--cat{{padding:7px 0 10px}}
+}}
+
+/* ── 작은 폰 (iPhone SE 등) ── */
+@media(max-width:360px){{
+  .brand h1{{font-size:30px}}
+  .card__body{{padding:9px}}
 }}
 @media(prefers-reduced-motion:reduce){{ *{{animation:none!important;transition:none!important}} }}
 </style>
@@ -387,12 +471,32 @@ def main():
         return
 
     generated_at = datetime.now(KST).strftime("%m/%d %H:%M")
+    now_iso = datetime.now(KST).strftime("%Y-%m-%d")
     OUT_DIR.mkdir(exist_ok=True)
     (OUT_DIR / "index.html").write_text(render(deals, generated_at), encoding="utf-8")
     (OUT_DIR / ".nojekyll").write_text("", encoding="utf-8")
 
+    # robots.txt: 크롤러 전면 허용 + sitemap 위치
+    robots = "User-agent: *\nAllow: /\n"
+    if SITE_URL:
+        robots += f"Sitemap: {SITE_URL}/sitemap.xml\n"
+    (OUT_DIR / "robots.txt").write_text(robots, encoding="utf-8")
+
+    # sitemap.xml: 도메인이 있을 때만. 단일 페이지라 홈 하나.
+    if SITE_URL:
+        (OUT_DIR / "sitemap.xml").write_text(
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+            f"  <url><loc>{SITE_URL}/</loc><lastmod>{now_iso}</lastmod>"
+            "<changefreq>hourly</changefreq><priority>1.0</priority></url>\n"
+            "</urlset>\n",
+            encoding="utf-8",
+        )
+
     size = (OUT_DIR / "index.html").stat().st_size
+    where = SITE_URL or "(사이트주소.txt 비어있음 — 상대경로)"
     print(f"[+] docs/index.html 생성 · 딜 {len(deals)}개 · {size/1024:.0f}KB")
+    print(f"    robots.txt · {'sitemap.xml · ' if SITE_URL else ''}주소: {where}")
 
 
 if __name__ == "__main__":

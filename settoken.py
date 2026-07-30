@@ -2,14 +2,16 @@
 
 토큰이 만료되면(collect.py 가 401 을 알려준다) 이렇게 갱신한다:
 
-    1. 크롬에서 sharelink.toss.im 접속 (로그인 상태)
-    2. F12 → Network → 아무 요청 우클릭 → Copy → Copy as cURL
-    3. python settoken.py   실행 후 붙여넣고 Ctrl+Z 엔터 (윈도우)
+    1. 웨일/크롬에서 sharelink.toss.im 접속 (로그인 상태)
+    2. F12 → Application 탭 → 왼쪽 Cookies → https://sharelink.toss.im
+    3. TBIZAUTH 행의 Value 를 더블클릭 → Ctrl+C
+    4. python settoken.py   실행 후 붙여넣고 엔터
 
-cURL 전체를 붙여도 되고, 쿠키 문자열만 붙여도 되고,
-TBIZAUTH 값만 붙여도 알아서 인식한다.
+값만 붙여도 되고, cURL 전체나 쿠키 문자열을 붙여도 알아서 인식한다.
+성공하면 GitHub 에 넣을 값을 클립보드에 자동 복사해준다.
 """
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -49,23 +51,39 @@ def merge_env(found):
     return lines
 
 
+def copy_clipboard(text):
+    try:
+        subprocess.run("clip", input=text.encode("utf-16-le"), check=True, shell=True)
+        return True
+    except Exception:
+        return False
+
+
 def main():
     if len(sys.argv) > 1:
         text = " ".join(sys.argv[1:])
     else:
-        print("cURL 또는 쿠키 문자열을 붙여넣고 Ctrl+Z 엔터 (윈도우) / Ctrl+D (그 외):")
-        text = sys.stdin.read()
+        print("TBIZAUTH 값(또는 cURL / 쿠키 문자열)을 붙여넣고 엔터:")
+        text = sys.stdin.readline()
+        if "=" not in text and len(text.strip()) < 20:
+            # 값이 한 줄에 안 들어온 경우 나머지도 읽는다
+            text += sys.stdin.read()
 
     found = extract(text)
     if not found.get("TBIZAUTH"):
         sys.exit("[!] TBIZAUTH 를 찾지 못했습니다. 붙여넣은 내용을 확인해주세요.")
 
     merge_env(found)
-    masked = found["TBIZAUTH"][:6] + "…" + found["TBIZAUTH"][-4:]
-    print(f"[+] TBIZAUTH 갱신됨 ({masked})")
+    tok = found["TBIZAUTH"]
+    print(f"[+] .env 갱신됨 ({tok[:6]}…{tok[-4:]})")
     if "TGSID" in found:
-        print("[+] TGSID 갱신됨")
-    print("→ python collect.py 로 확인하세요.")
+        print("[+] TGSID 도 갱신됨")
+    if copy_clipboard(tok):
+        print("[+] GitHub 시크릿용 값을 클립보드에 복사했습니다 → Ctrl+V")
+    print("\n── GitHub 시크릿(TBIZAUTH)에 넣을 값 ──")
+    print(tok)
+    print("─────────────────────────────────────")
+    print("로컬 확인: python collect.py")
 
 
 if __name__ == "__main__":
