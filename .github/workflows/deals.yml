@@ -48,6 +48,16 @@ jobs:
       - name: 사이트 생성
         run: python build.py
 
+      - name: 카드 생성용 의존성 (Pillow + 한글폰트)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq fonts-nanum
+          python -m pip install --quiet pillow
+
+      - name: 딜 카드 생성
+        # 스레드/인스타용 정사각 카드 + 캡션을 docs/cards/ 에 만든다.
+        run: python cards.py
+
       - name: 커밋 및 푸시
         # Vercel 이 이 푸시를 감지해 자동 배포한다.
         # deals.db 를 함께 커밋해야 링크 캐시와 가격 이력이 실행 사이에 이어진다.
