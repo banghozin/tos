@@ -228,8 +228,10 @@ def render(deals, generated_at):
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#2f6bff">
+<meta name="theme-color" content="#2f6bff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0e1524" media="(prefers-color-scheme: dark)">
 <meta name="format-detection" content="telephone=no">
+<script>try{{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t;}}catch(e){{}}</script>
 <title>핫딜 모음 · 토스쇼핑 반값 특가 | {SITE_NAME}</title>
 <meta name="description" content="핫딜 모음 사이트 {SITE_NAME}. 토스쇼핑에서 50% 이상 할인되거나 30일 최저가인 상품만 자동으로 모아 보여줍니다. {generated_at} 기준 {n_all}개 특가 업데이트.">
 <meta name="keywords" content="{SEO_KEYWORDS}">
@@ -247,8 +249,23 @@ def render(deals, generated_at):
   --bg:#eef2f8; --panel:#ffffff; --line:#e3e9f2;
   --ink:#141b2e; --dim:#69718a;
   --blue:#2f6bff; --blue-ink:#1b4fd8; --blue-soft:#eaf1ff;
-  --hot:#e5484d; --ok:#0a9d6e;
+  --hot:#e5484d; --ok:#0a9d6e; --shadow:rgba(20,27,46,.10); --imgbg:#f0f3f8;
   --font:"Malgun Gothic","맑은 고딕","Apple SD Gothic Neo",system-ui,-apple-system,sans-serif;
+}}
+/* 다크 팔레트: 토글(data-theme) 또는 시스템 설정을 따른다 */
+:root[data-theme="dark"]{{
+  --bg:#0e1524; --panel:#161f31; --line:#26314a;
+  --ink:#eef2f8; --dim:#9aa5be;
+  --blue:#4b83ff; --blue-ink:#6b9bff; --blue-soft:#18233c;
+  --hot:#ff6b6f; --ok:#2fd39a; --shadow:rgba(0,0,0,.35); --imgbg:#0f1728;
+}}
+@media(prefers-color-scheme:dark){{
+  :root:not([data-theme="light"]){{
+    --bg:#0e1524; --panel:#161f31; --line:#26314a;
+    --ink:#eef2f8; --dim:#9aa5be;
+    --blue:#4b83ff; --blue-ink:#6b9bff; --blue-soft:#18233c;
+    --hot:#ff6b6f; --ok:#2fd39a; --shadow:rgba(0,0,0,.35); --imgbg:#0f1728;
+  }}
 }}
 *{{box-sizing:border-box;margin:0;padding:0}}
 html{{-webkit-text-size-adjust:100%;scroll-behavior:smooth}}
@@ -267,6 +284,12 @@ a{{color:inherit}}
 /* ── 헤더 ── */
 header{{padding:26px 0 16px}}
 .brand{{display:flex;align-items:center;gap:11px}}
+.theme-btn{{
+  margin-left:auto;flex:0 0 auto;width:40px;height:40px;border-radius:50%;
+  border:1px solid var(--line);background:var(--panel);color:var(--ink);
+  font-size:18px;line-height:1;cursor:pointer;transition:.15s;
+}}
+.theme-btn:hover{{border-color:var(--blue);color:var(--blue)}}
 .brand__mark{{width:38px;height:38px;border-radius:10px;flex:0 0 auto;box-shadow:0 4px 12px rgba(47,107,255,.28)}}
 .brand h1{{font-size:clamp(22px,5vw,30px);font-weight:800;letter-spacing:-.02em}}
 .brand h1 span{{color:var(--blue)}}
@@ -281,12 +304,23 @@ header{{padding:26px 0 16px}}
 /* ── 필터 ── */
 .filterbar{{
   position:sticky;top:0;z-index:8;margin-top:14px;
-  background:rgba(238,242,248,.94);backdrop-filter:blur(10px);
+  background:color-mix(in srgb, var(--bg) 92%, transparent);backdrop-filter:blur(10px);
   border-bottom:1px solid var(--line);
 }}
-.filters{{display:flex;gap:7px;overflow-x:auto;padding:12px 0 0;scrollbar-width:none;-webkit-overflow-scrolling:touch}}
-.filters--cat{{padding:8px 0 12px;border-top:1px dashed var(--line);margin-top:10px}}
+.filterrow{{position:relative}}
+.filterrow--cat{{border-top:1px dashed var(--line);margin-top:10px}}
+.filters{{display:flex;gap:7px;overflow-x:auto;padding:12px 0;scrollbar-width:none;-webkit-overflow-scrolling:touch}}
 .filters::-webkit-scrollbar{{display:none}}
+/* 좌우 화살표 (PC에서 넘칠 때만) */
+.arrow{{
+  position:absolute;top:0;bottom:0;width:36px;border:none;cursor:pointer;z-index:2;
+  display:none;align-items:center;justify-content:center;
+  color:var(--ink);font-size:20px;font-weight:800;
+}}
+.arrow--l{{left:0;background:linear-gradient(90deg,var(--bg) 60%,transparent)}}
+.arrow--r{{right:0;background:linear-gradient(270deg,var(--bg) 60%,transparent)}}
+.filterrow.of-l .arrow--l,
+.filterrow.of-r .arrow--r{{display:flex}}
 .chip{{
   flex:0 0 auto;border:1px solid var(--line);background:var(--panel);color:var(--dim);
   font-family:inherit;font-size:13px;font-weight:700;border-radius:999px;
@@ -304,7 +338,7 @@ header{{padding:26px 0 16px}}
 .popular{{
   position:sticky;top:118px;background:var(--panel);
   border:1px solid var(--line);border-radius:16px;padding:16px 16px 6px;
-  box-shadow:0 2px 10px rgba(20,27,46,.04);
+  box-shadow:0 2px 10px var(--shadow);
 }}
 .popular h2{{font-size:15px;font-weight:800}}
 .popular__note{{font-size:11.5px;color:var(--dim);margin:3px 0 10px}}
@@ -314,7 +348,7 @@ header{{padding:26px 0 16px}}
 .pop__rank{{
   flex:0 0 auto;width:20px;text-align:center;font-weight:800;font-size:14px;color:var(--blue);
 }}
-.pop img{{width:46px;height:46px;border-radius:9px;object-fit:cover;flex:0 0 auto;background:#f0f3f8}}
+.pop img{{width:46px;height:46px;border-radius:9px;object-fit:cover;flex:0 0 auto;background:var(--imgbg)}}
 .pop__info{{display:flex;flex-direction:column;gap:2px;min-width:0}}
 .pop__name{{font-size:12.5px;line-height:1.35;color:var(--ink);
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}}
@@ -331,11 +365,11 @@ header{{padding:26px 0 16px}}
   text-decoration:none;display:flex;flex-direction:column;
   transition:box-shadow .18s, transform .18s, border-color .18s; animation:rise .5s both;
 }}
-.card:hover{{box-shadow:0 10px 26px rgba(20,27,46,.10);border-color:#cfd9ea}}
+.card:hover{{box-shadow:0 10px 26px var(--shadow);border-color:color-mix(in srgb,var(--blue) 35%,var(--line))}}
 .card[hidden]{{display:none}}
 @media(hover:hover){{ .card:hover{{transform:translateY(-3px)}} }}
 @keyframes rise{{from{{opacity:0;transform:translateY(10px)}}to{{opacity:1;transform:none}}}}
-.card__media{{position:relative;aspect-ratio:1/1;overflow:hidden;background:#f0f3f8}}
+.card__media{{position:relative;aspect-ratio:1/1;overflow:hidden;background:var(--imgbg)}}
 .card__media img{{width:100%;height:100%;object-fit:cover;transition:transform .5s ease}}
 .card:hover .card__media img{{transform:scale(1.05)}}
 .card__rate{{
@@ -355,7 +389,7 @@ header{{padding:26px 0 16px}}
   font-size:11px;font-weight:700;border-radius:6px;
   border:1px solid var(--line);color:var(--dim);padding:3px 7px;
 }}
-.badge--low{{border-color:var(--ok);color:var(--ok);background:#eafaf3}}
+.badge--low{{border-color:var(--ok);color:var(--ok);background:color-mix(in srgb,var(--ok) 12%,transparent)}}
 .badge--quiet{{color:var(--dim);font-weight:600}}
 .card__price{{margin-top:auto;display:flex;align-items:baseline;gap:7px;flex-wrap:wrap}}
 .price{{font-weight:800;font-size:21px;color:var(--ink)}}
@@ -384,29 +418,41 @@ footer{{border-top:1px solid var(--line);padding:24px 0 90px;color:var(--dim);fo
   padding:14px 16px;margin-bottom:14px;line-height:1.6;
 }}
 
-/* ── 태블릿: 인기 패널을 위로 가로 스크롤 ── */
+/* ── 태블릿: 인기 패널을 위로 가로 스크롤, 화살표 숨김(터치 스크롤) ── */
 @media(max-width:900px){{
+  .arrow{{display:none!important}}
   .layout{{grid-template-columns:1fr}}
-  .popular{{position:static;order:-1;padding:14px}}
-  .popular__list{{flex-direction:row;overflow-x:auto;gap:10px;scrollbar-width:none}}
+  .popular{{position:static;order:-1;padding:12px}}
+  .popular h2{{font-size:14px}}
+  .popular__list{{flex-direction:row;overflow-x:auto;gap:8px;scrollbar-width:none}}
   .popular__list::-webkit-scrollbar{{display:none}}
-  .pop{{flex:0 0 210px;border-top:none;border:1px solid var(--line);border-radius:11px;padding:9px}}
+  .pop{{flex:0 0 190px;border-top:none;border:1px solid var(--line);border-radius:11px;padding:8px}}
   .pop:first-child{{border:1px solid var(--line)}}
 }}
 
-/* ── 폰 ── */
+/* ── 폰: 카드 밀도를 높여 목록이 덜 비대하게 ── */
 @media(max-width:560px){{
-  body{{font-size:14px}}
-  .grid{{grid-template-columns:repeat(2,1fr);gap:10px}}
-  .card__rate b{{font-size:17px}}
-  .card__body{{padding:10px 11px 12px;gap:6px}}
-  .card__name{{font-size:12.5px}}
-  .price{{font-size:18px}}
+  body{{font-size:13.5px}}
+  .grid{{grid-template-columns:repeat(2,1fr);gap:8px}}
+  .card{{border-radius:12px}}
+  .card__rate{{left:7px;top:7px;padding:3px 7px;border-radius:7px}}
+  .card__rate b{{font-size:15px}}
+  .card__rate i{{font-size:10px}}
+  .card__body{{padding:9px 10px 10px;gap:5px}}
+  .card__name{{font-size:12px;line-height:1.36}}
+  .card__badges{{gap:3px}}
+  .badge{{font-size:10px;padding:2px 5px}}
   .badge--quiet{{display:none}}
+  .price{{font-size:16px}}
+  .price em{{font-size:11px}}
+  .was{{font-size:11px}}
+  .card__end{{font-size:10.5px}}
   .stat{{padding:7px 10px;font-size:12px}}
+  .intro{{font-size:13px}}
 }}
 @media(max-width:360px){{
-  .card__body{{padding:9px}}
+  .grid{{gap:7px}}
+  .card__body{{padding:8px}}
 }}
 @media(prefers-reduced-motion:reduce){{ *{{animation:none!important;transition:none!important;scroll-behavior:auto!important}} }}
 </style>
@@ -418,6 +464,7 @@ footer{{border-top:1px solid var(--line);padding:24px 0 90px;color:var(--dim);fo
     <div class="brand">
       <img class="brand__mark" src="favicon.svg" alt="" width="38" height="38">
       <h1>특가<span>레이더</span></h1>
+      <button class="theme-btn" id="themeBtn" aria-label="라이트/다크 전환">🌙</button>
     </div>
     <p class="intro">
       토스쇼핑 <b>핫딜</b>을 자동으로 모으는 <b>핫딜 모음 사이트</b>예요.
@@ -432,15 +479,23 @@ footer{{border-top:1px solid var(--line);padding:24px 0 90px;color:var(--dim);fo
   </header>
 
   <div class="filterbar">
-    <nav class="filters" id="filters" aria-label="할인율 필터">
-      <button class="chip" data-f="all" aria-pressed="true">전체</button>
-      <button class="chip" data-f="50" aria-pressed="false">50% 이상</button>
-      <button class="chip" data-f="70" aria-pressed="false">70% 이상</button>
-      <button class="chip" data-f="80" aria-pressed="false">80% 이상</button>
-      <button class="chip" data-f="low" aria-pressed="false">30일 최저가</button>
-      <button class="chip" data-f="today" aria-pressed="false">오늘 마감</button>
-    </nav>
-    <nav class="filters filters--cat" id="cats" aria-label="카테고리 필터">{cat_chips}</nav>
+    <div class="filterrow">
+      <button class="arrow arrow--l" data-dir="-1" tabindex="-1" aria-label="왼쪽으로">‹</button>
+      <nav class="filters" id="filters" aria-label="할인율 필터">
+        <button class="chip" data-f="all" aria-pressed="true">전체</button>
+        <button class="chip" data-f="50" aria-pressed="false">50% 이상</button>
+        <button class="chip" data-f="70" aria-pressed="false">70% 이상</button>
+        <button class="chip" data-f="80" aria-pressed="false">80% 이상</button>
+        <button class="chip" data-f="low" aria-pressed="false">30일 최저가</button>
+        <button class="chip" data-f="today" aria-pressed="false">오늘 마감</button>
+      </nav>
+      <button class="arrow arrow--r" data-dir="1" tabindex="-1" aria-label="오른쪽으로">›</button>
+    </div>
+    <div class="filterrow filterrow--cat">
+      <button class="arrow arrow--l" data-dir="-1" tabindex="-1" aria-label="왼쪽으로">‹</button>
+      <nav class="filters filters--cat" id="cats" aria-label="카테고리 필터">{cat_chips}</nav>
+      <button class="arrow arrow--r" data-dir="1" tabindex="-1" aria-label="오른쪽으로">›</button>
+    </div>
   </div>
 
   <p class="count" id="count"></p>
@@ -522,6 +577,39 @@ footer{{border-top:1px solid var(--line);padding:24px 0 90px;color:var(--dim);fo
   window.addEventListener('scroll', onScroll, {{passive:true}}); onScroll();
   totop.addEventListener('click', function(){{
     window.scrollTo({{top:0, behavior:'smooth'}});
+  }});
+
+  // 다크/라이트 토글
+  var themeBtn=document.getElementById('themeBtn');
+  function curTheme(){{
+    var t=document.documentElement.dataset.theme;
+    if(t) return t;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }}
+  function setIcon(){{ themeBtn.textContent = curTheme()==='dark' ? '☀️' : '🌙'; }}
+  setIcon();
+  themeBtn.addEventListener('click', function(){{
+    var next = curTheme()==='dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    try{{ localStorage.setItem('theme', next); }}catch(e){{}}
+    setIcon();
+  }});
+
+  // 필터 좌우 화살표 (PC에서 넘칠 때)
+  [].forEach.call(document.querySelectorAll('.filterrow'), function(row){{
+    var strip=row.querySelector('.filters');
+    function upd(){{
+      row.classList.toggle('of-l', strip.scrollLeft > 4);
+      row.classList.toggle('of-r', strip.scrollLeft < strip.scrollWidth - strip.clientWidth - 4);
+    }}
+    strip.addEventListener('scroll', upd, {{passive:true}});
+    window.addEventListener('resize', upd);
+    [].forEach.call(row.querySelectorAll('.arrow'), function(a){{
+      a.addEventListener('click', function(){{
+        strip.scrollBy({{left:(+a.dataset.dir)*strip.clientWidth*0.8, behavior:'smooth'}});
+      }});
+    }});
+    upd();
   }});
 }})();
 </script>

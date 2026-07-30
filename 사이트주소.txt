@@ -1,5 +1,3 @@
 # 배포된 사이트 주소를 여기에 한 줄로 적으세요.
-# Vercel 주소(예: https://tos-xxx.vercel.app) 또는 산 도메인
-# 이 줄 아래에 주소만 남기면 됩니다. 비워두면 SEO 절대주소가 생략됩니다.
-#
-# https://tos-mocha.vercel.app
+# 도메인을 바꾸면 이 줄(아래 주소)만 고치면 SEO가 새 주소로 잡힙니다.
+https://hotdeal.help
