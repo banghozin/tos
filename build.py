@@ -144,10 +144,11 @@ def card_html(deal):
     return f"""
       <a class="card" href="{url}" target="_blank" rel="nofollow sponsored noopener"
          data-rate="{rate}" data-low="{int(lowest)}" data-end="{html.escape(end or '')}"
-         data-cat="{deal.get('category_l1') or ''}">
+         data-cat="{deal.get('category_l1') or ''}" data-id="{deal.get('product_id')}">
         <div class="card__media">
           <img src="{thumb}" alt="{name}" loading="lazy" decoding="async">
           <div class="card__rate"><b>{rate}</b><i>%</i></div>
+          <span class="card__share" role="button" tabindex="0" aria-label="공유 링크 복사" data-share>🔗</span>
         </div>
         <div class="card__body">
           <p class="card__name">{name}</p>
@@ -233,6 +234,260 @@ def seo_head(deals):
         f'"itemListElement":[{",".join(items)}]}}</script>\n'
     )
     return canonical, ld
+
+
+# 개별 상품 페이지에서 첫 페인트 전에 테마를 적용하는 인라인 스크립트(깜빡임 방지).
+THEME_INIT = ("<script>try{var t=localStorage.getItem('theme');"
+              "if(t)document.documentElement.dataset.theme=t;}catch(e){}</script>")
+
+# 개별 상품 페이지 전용 스타일. 메인과 같은 팔레트/폰트를 쓴다.
+DETAIL_CSS = """
+:root{
+  --bg:#eef2f8; --panel:#ffffff; --line:#e3e9f2; --ink:#141b2e; --dim:#69718a;
+  --blue:#2f6bff; --blue-ink:#1b4fd8; --blue-soft:#eaf1ff;
+  --hot:#e5484d; --ok:#0a9d6e; --shadow:rgba(20,27,46,.10); --imgbg:#f0f3f8;
+  --font:"Malgun Gothic","맑은 고딕","Apple SD Gothic Neo",system-ui,-apple-system,sans-serif;
+}
+:root[data-theme="dark"]{
+  --bg:#0e1524; --panel:#161f31; --line:#26314a; --ink:#eef2f8; --dim:#9aa5be;
+  --blue:#4b83ff; --blue-ink:#6b9bff; --blue-soft:#18233c;
+  --hot:#ff6b6f; --ok:#2fd39a; --shadow:rgba(0,0,0,.35); --imgbg:#0f1728;
+}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e1524; --panel:#161f31; --line:#26314a; --ink:#eef2f8; --dim:#9aa5be;
+  --blue:#4b83ff; --blue-ink:#6b9bff; --blue-soft:#18233c;
+  --hot:#ff6b6f; --ok:#2fd39a; --shadow:rgba(0,0,0,.35); --imgbg:#0f1728;
+}}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;
+  line-height:1.5;letter-spacing:-.01em;overflow-x:hidden;-webkit-tap-highlight-color:transparent}
+a{color:inherit}
+.wrap{max-width:560px;margin:0 auto;
+  padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right))}
+.top{display:flex;align-items:center;gap:9px;padding:18px 0 6px}
+.top__home{display:flex;align-items:center;gap:7px;text-decoration:none;font-weight:800;font-size:16px}
+.top__home img{width:28px;height:28px;border-radius:8px}
+.top__home span{color:var(--blue)}
+.theme-btn{margin-left:auto;width:38px;height:38px;border-radius:50%;
+  border:1px solid var(--line);background:var(--panel);color:var(--ink);
+  font-size:17px;line-height:1;cursor:pointer;transition:.15s}
+.theme-btn:hover{border-color:var(--blue);color:var(--blue)}
+.hero{background:var(--imgbg);border:1px solid var(--line);border-radius:16px;
+  overflow:hidden;position:relative;margin-top:8px;aspect-ratio:1/1}
+.hero img{width:100%;height:100%;object-fit:cover}
+.hero__rate{position:absolute;left:12px;top:12px;background:var(--blue);color:#fff;
+  display:flex;align-items:baseline;padding:6px 12px;border-radius:10px;font-weight:800;
+  box-shadow:0 3px 10px rgba(47,107,255,.35)}
+.hero__rate b{font-size:24px;line-height:1}
+.hero__rate i{font-size:12px;font-style:normal;margin-left:1px}
+.pname{font-size:18px;line-height:1.45;font-weight:700;margin:16px 0 10px}
+.badges{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px}
+.badge{font-size:12px;font-weight:700;border-radius:7px;border:1px solid var(--line);
+  color:var(--dim);padding:4px 9px}
+.badge--low{border-color:var(--ok);color:var(--ok);background:color-mix(in srgb,var(--ok) 12%,transparent)}
+.pricebox{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;
+  padding:14px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.pricebox .price{font-weight:800;font-size:30px;color:var(--ink)}
+.pricebox .price em{font-style:normal;font-size:15px;font-weight:700;margin-left:2px}
+.pricebox .was{font-size:15px;color:#9aa2b5;text-decoration:line-through}
+/* 가격 변동 그래프 */
+.chart-wrap{border:1px solid var(--line);background:var(--panel);border-radius:14px;
+  padding:14px 14px 10px;margin:16px 0}
+.chart-wrap h2{font-size:14px;font-weight:800;margin-bottom:2px}
+.chart-note,.chart-empty{font-size:12px;color:var(--dim);margin-bottom:8px}
+.chart-empty{margin-bottom:0;padding:6px 0}
+.chart{width:100%;height:auto;display:block;overflow:visible}
+.chart-area{fill:color-mix(in srgb,var(--blue) 12%,transparent);stroke:none}
+.chart-line{fill:none;stroke:var(--blue);stroke-width:2.4;stroke-linejoin:round;stroke-linecap:round}
+.chart-cur{fill:var(--blue);stroke:var(--panel);stroke-width:2}
+.chart-min{fill:var(--ok);stroke:var(--panel);stroke-width:2}
+.chart-lbl{fill:var(--dim);font-size:11px;font-weight:700}
+.chart-min-lbl{fill:var(--ok);font-size:11px;font-weight:800}
+/* 고지 문구 + 구매 버튼 */
+.disclosure{border:1px solid var(--blue);border-left-width:4px;background:var(--blue-soft);
+  color:var(--ink);font-size:13.5px;font-weight:600;border-radius:10px;
+  padding:13px 15px;margin:16px 0 10px;line-height:1.6}
+.buy{display:flex;align-items:center;justify-content:center;gap:6px;background:var(--blue);
+  color:#fff;font-weight:800;font-size:17px;padding:16px;border-radius:12px;
+  text-decoration:none;box-shadow:0 8px 22px rgba(47,107,255,.35)}
+.buy:active{transform:scale(.99)}
+.note{font-size:12px;color:var(--dim);text-align:center;margin-top:10px;line-height:1.6}
+footer{border-top:1px solid var(--line);margin-top:22px;padding:18px 0 60px;
+  color:var(--dim);font-size:12px;line-height:1.7}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+"""
+
+
+def fetch_price_history(conn, product_id, cap=60):
+    """observations 에 쌓인 실구매가 이력을 시간순으로 가져온다(최근 cap개)."""
+    rows = conn.execute(
+        """SELECT observed_at, effective_price FROM observations
+           WHERE product_id=? AND effective_price IS NOT NULL
+           ORDER BY observed_at""",
+        (product_id,),
+    ).fetchall()
+    hist = [(r["observed_at"], r["effective_price"]) for r in rows]
+    return hist[-cap:]
+
+
+def price_chart_svg(history):
+    """가격 이력을 정적 SVG 꺾은선으로 그린다. 관측점이 2개 미만이면 ''(그래프 생략)."""
+    pts = [(t, p) for t, p in history if isinstance(p, int)]
+    if len(pts) < 2:
+        return ""
+    prices = [p for _, p in pts]
+    lo, hi = min(prices), max(prices)
+    n = len(pts)
+    W, H = 600, 200
+    padL, padR, padT, padB = 10, 22, 20, 26
+    span = (hi - lo) or 1
+
+    def X(i):
+        return padL + (W - padL - padR) * (i / (n - 1))
+
+    def Y(p):
+        return padT + (H - padT - padB) * (1 - (p - lo) / span)
+
+    line = " ".join(f"{X(i):.1f},{Y(p):.1f}" for i, (_, p) in enumerate(pts))
+    area = f"{X(0):.1f},{H-padB:.1f} " + line + f" {X(n-1):.1f},{H-padB:.1f}"
+    cur_i, cur_p = n - 1, prices[-1]
+    min_i = min(range(n), key=lambda i: prices[i])
+
+    def lbl_date(t):
+        s = str(t)
+        return s[5:10].replace("-", ".") if len(s) >= 10 else ""
+
+    d0, d1 = lbl_date(pts[0][0]), lbl_date(pts[-1][0])
+    return (
+        f'<svg class="chart" viewBox="0 0 {W} {H}" role="img" aria-label="가격 변동 그래프">'
+        f'<polyline class="chart-area" points="{area}"/>'
+        f'<polyline class="chart-line" points="{line}"/>'
+        f'<circle class="chart-min" cx="{X(min_i):.1f}" cy="{Y(prices[min_i]):.1f}" r="4"/>'
+        f'<circle class="chart-cur" cx="{X(cur_i):.1f}" cy="{Y(cur_p):.1f}" r="4.5"/>'
+        f'<text class="chart-lbl" x="{X(0):.0f}" y="13">최고 {won(hi)}원</text>'
+        f'<text class="chart-min-lbl" x="{X(min_i):.1f}" y="{Y(prices[min_i])-8:.1f}" '
+        f'text-anchor="middle">최저 {won(lo)}</text>'
+        f'<text class="chart-lbl" x="{X(0):.0f}" y="{H-8}">{d0}</text>'
+        f'<text class="chart-lbl" x="{W-padR:.0f}" y="{H-8}" text-anchor="end">{d1}</text>'
+        f'</svg>'
+    )
+
+
+def product_page_html(deal, chart_svg):
+    """상품 하나짜리 공유용 페이지. 검색엔 태우지 않는다(noindex)."""
+    pid = deal.get("product_id")
+    name = html.escape(deal.get("display_name") or "")
+    thumb = html.escape(deal.get("thumbnail_url") or "")
+    buy = html.escape(deal.get("short_url") or "")
+    rate = rate_of(deal)
+    price = price_of(deal)
+    orig = deal.get("original_price")
+    lowest = bool(deal.get("is_lowest_30d"))
+
+    icon = f"{SITE_URL}/favicon.svg" if SITE_URL else "../favicon.svg"
+    home = f"{SITE_URL}/" if SITE_URL else "../index.html"
+    page_url = f"{SITE_URL}/p/{pid}.html" if SITE_URL else ""
+    ogurl = f'<meta property="og:url" content="{page_url}">\n' if page_url else ""
+    title = f"{name} · {rate}% {won(price)}원 | {SITE_NAME}"
+    desc = f"{rate}% 할인 · {won(price)}원" + (f" · 정가 {won(orig)}원" if orig else "")
+
+    badges = []
+    if lowest:
+        badges.append('<span class="badge badge--low">30일 최저가</span>')
+    if deal.get("coupon_discount"):
+        badges.append(f'<span class="badge">쿠폰 {won(deal["coupon_discount"])}원 포함</span>')
+    if deal.get("review_count"):
+        badges.append(f'<span class="badge">★ {deal.get("review_score")} ({won(deal["review_count"])})</span>')
+    badge_html = f'<div class="badges">{"".join(badges)}</div>' if badges else ""
+
+    if chart_svg:
+        chart_block = (
+            '<div class="chart-wrap"><h2>📉 가격 변동</h2>'
+            '<p class="chart-note">특가레이더가 수집할 때마다 기록한 실구매가예요.</p>'
+            f'{chart_svg}</div>'
+        )
+    else:
+        chart_block = (
+            '<div class="chart-wrap"><h2>📉 가격 변동</h2>'
+            '<p class="chart-empty">가격 추적을 막 시작했어요. 갱신이 쌓이면 변동 그래프가 나타납니다.</p></div>'
+        )
+
+    return f"""<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2f6bff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0e1524" media="(prefers-color-scheme: dark)">
+<meta name="format-detection" content="telephone=no">
+<meta name="robots" content="noindex,follow">
+{THEME_INIT}
+<title>{title}</title>
+<meta name="description" content="{desc}">
+<link rel="icon" href="{icon}" type="image/svg+xml">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="{SITE_NAME}">
+<meta property="og:title" content="{name}">
+<meta property="og:description" content="{desc}">
+<meta property="og:image" content="{thumb}">
+{ogurl}<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{name}">
+<meta name="twitter:description" content="{desc}">
+<meta name="twitter:image" content="{thumb}">
+<style>{DETAIL_CSS}</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="top__home" href="{home}">
+      <img src="{icon}" alt="" width="28" height="28">특가<span>레이더</span>
+    </a>
+    <button class="theme-btn" id="themeBtn" aria-label="라이트/다크 전환">🌙</button>
+  </div>
+
+  <div class="hero">
+    <img src="{thumb}" alt="{name}" decoding="async">
+    <div class="hero__rate"><b>{rate}</b><i>%</i></div>
+  </div>
+
+  <h1 class="pname">{name}</h1>
+  {badge_html}
+  <div class="pricebox">
+    <span class="price">{won(price)}<em>원</em></span>
+    <span class="was">{won(orig)}원</span>
+  </div>
+
+  {chart_block}
+
+  <p class="disclosure">{DISCLOSURE}</p>
+  <a class="buy" href="{buy}" target="_blank" rel="nofollow sponsored noopener">토스에서 구매하기 →</a>
+  <p class="note">가격과 재고는 수시로 바뀝니다. 결제 화면에서 최종 가격을 다시 확인해 주세요.</p>
+
+  <footer>
+    <p>{DISCLOSURE}</p>
+    <p>ⓒ {SITE_NAME} · 토스쇼핑 쉐어링크</p>
+  </footer>
+</div>
+
+<script>
+(function(){{
+  var b=document.getElementById('themeBtn');
+  function cur(){{var t=document.documentElement.dataset.theme;
+    return t||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');}}
+  function ico(){{b.textContent=cur()==='dark'?'☀️':'🌙';}}
+  ico();
+  b.addEventListener('click',function(){{
+    var n=cur()==='dark'?'light':'dark';
+    document.documentElement.dataset.theme=n;
+    try{{localStorage.setItem('theme',n);}}catch(e){{}}
+    ico();
+  }});
+}})();
+</script>
+</body>
+</html>
+"""
 
 
 def render(deals, generated_at):
@@ -409,6 +664,14 @@ header{{padding:26px 0 16px}}
 }}
 .card__rate b{{font-size:19px;line-height:1;font-weight:800}}
 .card__rate i{{font-size:11px;font-style:normal;margin-left:1px}}
+.card__share{{
+  position:absolute;right:8px;top:8px;width:30px;height:30px;border-radius:50%;z-index:2;
+  display:flex;align-items:center;justify-content:center;font-size:13px;line-height:1;
+  background:color-mix(in srgb,var(--panel) 82%,transparent);border:1px solid var(--line);
+  -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);cursor:pointer;transition:.15s;
+}}
+.card__share:hover{{border-color:var(--blue);color:var(--blue)}}
+.card__share.copied{{background:var(--ok);color:#fff;border-color:var(--ok)}}
 .card__body{{padding:12px 13px 14px;display:flex;flex-direction:column;gap:8px;flex:1}}
 .card__name{{
   font-size:13.5px;line-height:1.42;color:var(--ink);font-weight:500;
@@ -587,6 +850,31 @@ footer{{border-top:1px solid var(--line);padding:24px 0 90px;color:var(--dim);fo
   bind('cats',    function(b){{ fCat =b.dataset.c; }});
   apply();
 
+  // 카드 공유 버튼: 개별 상품 페이지 링크를 클립보드에 복사 (토스 이동은 막는다)
+  function copyShare(s){{
+    var card=s.closest('.card'); if(!card) return;
+    var link=location.origin+'/p/'+card.dataset.id+'.html';
+    function done(){{ s.classList.add('copied'); s.textContent='✓';
+      setTimeout(function(){{ s.classList.remove('copied'); s.textContent='🔗'; }}, 1200); }}
+    if(navigator.clipboard && navigator.clipboard.writeText){{
+      navigator.clipboard.writeText(link).then(done, done);
+    }} else {{
+      var t=document.createElement('textarea'); t.value=link;
+      t.style.position='fixed'; t.style.opacity='0'; document.body.appendChild(t);
+      t.focus(); t.select();
+      try{{ document.execCommand('copy'); }}catch(e){{}}
+      document.body.removeChild(t); done();
+    }}
+  }}
+  grid.addEventListener('click', function(e){{
+    var s=e.target.closest('[data-share]'); if(!s) return;
+    e.preventDefault(); e.stopPropagation(); copyShare(s);
+  }});
+  grid.addEventListener('keydown', function(e){{
+    var s=e.target.closest('[data-share]'); if(!s) return;
+    if(e.key==='Enter'||e.key===' '){{ e.preventDefault(); e.stopPropagation(); copyShare(s); }}
+  }});
+
   // 마감 카운트다운
   function tick(){{
     var now=Date.now();
@@ -657,9 +945,9 @@ def main():
 
     conn = db.connect()
     deals = fetch_deals(conn, args.min_discount, args.limit)
-    conn.close()
 
     if not deals:
+        conn.close()
         print("[!] 실을 딜이 없습니다. collect.py → issue.py 를 먼저 돌리세요.")
         print("    (쉐어링크가 발급된 상품만 사이트에 실립니다)")
         return
@@ -670,6 +958,25 @@ def main():
     (OUT_DIR / "index.html").write_text(render(deals, generated_at), encoding="utf-8")
     (OUT_DIR / "favicon.svg").write_text(FAVICON_SVG, encoding="utf-8")
     (OUT_DIR / ".nojekyll").write_text("", encoding="utf-8")
+
+    # 개별 상품 페이지(공유용). 검색엔 안 태우고(noindex) sitemap 에도 안 넣는다.
+    pdir = OUT_DIR / "p"
+    pdir.mkdir(exist_ok=True)
+    current_ids = set()
+    for d in deals:
+        pid = d.get("product_id")
+        if pid is None:
+            continue
+        current_ids.add(str(pid))
+        chart = price_chart_svg(fetch_price_history(conn, pid))
+        (pdir / f"{pid}.html").write_text(product_page_html(d, chart), encoding="utf-8")
+    # 더 이상 노출되지 않는(품절·기준 미달) 상품 페이지는 삭제한다.
+    removed = 0
+    for f in pdir.glob("*.html"):
+        if f.stem not in current_ids:
+            f.unlink()
+            removed += 1
+    conn.close()
 
     robots = "User-agent: *\nAllow: /\n"
     if SITE_URL:
@@ -689,6 +996,7 @@ def main():
     size = (OUT_DIR / "index.html").stat().st_size
     where = SITE_URL or "(사이트주소.txt 비어있음 — 상대경로)"
     print(f"[+] docs/index.html 생성 · 딜 {len(deals)}개 · {size/1024:.0f}KB")
+    print(f"[+] docs/p/ 개별 페이지 {len(current_ids)}개" + (f" (오래된 {removed}개 삭제)" if removed else ""))
     print(f"    favicon.svg · robots.txt · {'sitemap.xml · ' if SITE_URL else ''}주소: {where}")
 
 
