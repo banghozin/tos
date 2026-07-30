@@ -10,6 +10,7 @@
 import argparse
 import html
 import json
+import re
 import sys
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -41,7 +42,26 @@ def load_site_url():
     return ""
 
 
+def load_google_verify():
+    """구글 서치콘솔 'HTML 태그' 인증 토큰을 구글인증.txt 에서 읽는다.
+
+    서치콘솔에서 준 <meta name="google-site-verification" content="여기값">
+    의 '여기값'만 파일에 한 줄 넣으면 모든 페이지 <head> 에 자동 삽입된다.
+    """
+    f = ROOT / "구글인증.txt"
+    if not f.exists():
+        return ""
+    for line in f.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line and not line.startswith("#"):
+            # 혹시 메타태그 전체를 붙여넣어도 content 값만 뽑아낸다
+            m = re.search(r'content=["\']?([A-Za-z0-9_\-]+)', line)
+            return m.group(1) if m else line
+    return ""
+
+
 SITE_URL = load_site_url()
+GOOGLE_VERIFY = load_google_verify()
 SITE_NAME = "특가레이더"
 SITE_TAGLINE = "토스쇼핑 반값 이하 핫딜만 골라 담는 곳"
 # 검색 유입을 노리는 핵심 키워드. 제목·설명·본문에 자연스럽게 녹인다.
@@ -222,6 +242,8 @@ def render(deals, generated_at):
     n_low = sum(1 for d in deals if d.get("is_lowest_30d"))
     cat_chips = category_chips(deals)
     canonical, jsonld = seo_head(deals)
+    gverify = (f'<meta name="google-site-verification" content="{GOOGLE_VERIFY}">\n'
+               if GOOGLE_VERIFY else "")
 
     return f"""<!doctype html>
 <html lang="ko">
@@ -235,7 +257,7 @@ def render(deals, generated_at):
 <title>핫딜 모음 · 토스쇼핑 반값 특가 | {SITE_NAME}</title>
 <meta name="description" content="핫딜 모음 사이트 {SITE_NAME}. 토스쇼핑에서 50% 이상 할인되거나 30일 최저가인 상품만 자동으로 모아 보여줍니다. {generated_at} 기준 {n_all}개 특가 업데이트.">
 <meta name="keywords" content="{SEO_KEYWORDS}">
-<link rel="icon" href="favicon.svg" type="image/svg+xml">
+{gverify}<link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="favicon.svg">
 {canonical}<meta property="og:type" content="website">
 <meta property="og:site_name" content="{SITE_NAME}">
