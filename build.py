@@ -42,26 +42,27 @@ def load_site_url():
     return ""
 
 
-def load_google_verify():
-    """구글 서치콘솔 'HTML 태그' 인증 토큰을 구글인증.txt 에서 읽는다.
+def load_verify(filename):
+    """검색엔진 'HTML 태그' 인증 토큰을 파일에서 읽는다.
 
-    서치콘솔에서 준 <meta name="google-site-verification" content="여기값">
-    의 '여기값'만 파일에 한 줄 넣으면 모든 페이지 <head> 에 자동 삽입된다.
+    콘솔에서 준 <meta name="..." content="여기값"> 의 '여기값'만
+    파일에 한 줄 넣으면 모든 페이지 <head> 에 자동 삽입된다.
+    메타태그를 통째로 붙여넣어도 content 값만 뽑아낸다.
     """
-    f = ROOT / "구글인증.txt"
+    f = ROOT / filename
     if not f.exists():
         return ""
     for line in f.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if line and not line.startswith("#"):
-            # 혹시 메타태그 전체를 붙여넣어도 content 값만 뽑아낸다
             m = re.search(r'content=["\']?([A-Za-z0-9_\-]+)', line)
             return m.group(1) if m else line
     return ""
 
 
 SITE_URL = load_site_url()
-GOOGLE_VERIFY = load_google_verify()
+GOOGLE_VERIFY = load_verify("구글인증.txt")
+NAVER_VERIFY = load_verify("네이버인증.txt")
 SITE_NAME = "특가레이더"
 SITE_TAGLINE = "토스쇼핑 반값 이하 핫딜만 골라 담는 곳"
 # 검색 유입을 노리는 핵심 키워드. 제목·설명·본문에 자연스럽게 녹인다.
@@ -242,8 +243,11 @@ def render(deals, generated_at):
     n_low = sum(1 for d in deals if d.get("is_lowest_30d"))
     cat_chips = category_chips(deals)
     canonical, jsonld = seo_head(deals)
-    gverify = (f'<meta name="google-site-verification" content="{GOOGLE_VERIFY}">\n'
-               if GOOGLE_VERIFY else "")
+    gverify = ""
+    if GOOGLE_VERIFY:
+        gverify += f'<meta name="google-site-verification" content="{GOOGLE_VERIFY}">\n'
+    if NAVER_VERIFY:
+        gverify += f'<meta name="naver-site-verification" content="{NAVER_VERIFY}">\n'
 
     return f"""<!doctype html>
 <html lang="ko">
