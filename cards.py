@@ -205,48 +205,115 @@ def build_caption(deals):
     return cap
 
 
-def viewer_html(n, caption, generated_at):
+def viewer_html(deals, caption, generated_at):
+    n = len(deals)
     imgs = "".join(
         f'<img class="c" src="{i}.jpg" alt="딜 카드 {i}" loading="lazy">' for i in range(1, n + 1)
     )
-    cap_attr = caption.replace("&", "&amp;").replace("<", "&lt;").replace('"', "&quot;")
     cap_txt = caption.replace("&", "&amp;").replace("<", "&lt;")
+
+    # 상품별 공유 링크(개별 페이지). 특정 상품 하나만 공유하고 싶을 때.
+    link_rows = []
+    for i, dl in enumerate(deals, 1):
+        pid = dl.get("product_id")
+        name = (dl.get("display_name") or "").replace("&", "&amp;").replace("<", "&lt;")
+        if len(name) > 28:
+            name = name[:28] + "…"
+        url = f"{SITE_URL}/p/{pid}.html" if SITE_URL else f"../p/{pid}.html"
+        link_rows.append(
+            f'<div class="lk"><span class="lk__n">{i}. {name}</span>'
+            f'<button class="lk__b" data-url="{url}">링크 복사</button></div>'
+        )
+    links = "".join(link_rows)
+
     return f"""<!doctype html>
 <html lang="ko"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<title>딜 카드 · {SITE_NAME}</title>
+<title>딜 카드 공유 · {SITE_NAME}</title>
 <style>
 *{{box-sizing:border-box;margin:0;padding:0}}
 body{{background:#0e1524;color:#eef2f8;font-family:"Malgun Gothic","맑은 고딕",system-ui,sans-serif;
   padding:18px;line-height:1.6;max-width:560px;margin:0 auto}}
 h1{{font-size:19px;margin-bottom:4px}}
 p.sub{{color:#9aa5be;font-size:13px;margin-bottom:16px}}
-.cards{{display:flex;flex-direction:column;gap:12px;margin-bottom:22px}}
+.share{{width:100%;padding:17px;border:none;border-radius:14px;background:#4b83ff;color:#fff;
+  font:inherit;font-weight:800;font-size:17px;cursor:pointer;margin-bottom:8px}}
+.share:active{{transform:scale(.99)}}
+.share small{{display:block;font-weight:600;font-size:12px;opacity:.85;margin-top:2px}}
+.cards{{display:flex;flex-direction:column;gap:12px;margin:16px 0 4px}}
 .c{{width:100%;border-radius:14px;border:1px solid #26314a}}
-h2{{font-size:15px;margin:18px 0 8px}}
-textarea{{width:100%;height:200px;background:#161f31;color:#eef2f8;border:1px solid #26314a;
+h2{{font-size:15px;margin:22px 0 8px}}
+textarea{{width:100%;height:190px;background:#161f31;color:#eef2f8;border:1px solid #26314a;
   border-radius:12px;padding:12px;font:inherit;font-size:14px;resize:vertical}}
-button{{margin-top:10px;width:100%;padding:14px;border:none;border-radius:12px;background:#4b83ff;
-  color:#fff;font:inherit;font-weight:800;font-size:16px;cursor:pointer}}
-button:active{{transform:scale(.99)}}
-.tip{{color:#9aa5be;font-size:12.5px;margin-top:14px}}
+button.copy{{margin-top:10px;width:100%;padding:13px;border:none;border-radius:12px;background:#26314a;
+  color:#eef2f8;font:inherit;font-weight:700;font-size:15px;cursor:pointer}}
+.lk{{display:flex;align-items:center;gap:8px;padding:9px 0;border-top:1px solid #26314a}}
+.lk:first-child{{border-top:none}}
+.lk__n{{flex:1;min-width:0;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
+.lk__b{{flex:0 0 auto;padding:8px 12px;border:1px solid #3a4a6a;border-radius:9px;
+  background:transparent;color:#9db4ff;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer}}
+.tip{{color:#9aa5be;font-size:12.5px;margin-top:16px;line-height:1.7}}
 </style></head>
 <body>
-<h1>🔥 오늘의 딜 카드</h1>
-<p class="sub">{generated_at} 기준 · 스레드/인스타에 올리세요</p>
+<h1>🔥 오늘의 딜 카드뉴스</h1>
+<p class="sub">{generated_at} 기준 · 버튼 하나로 스레드에 공유</p>
+
+<button class="share" id="share">📤 카드 4장 + 멘트 한 번에 공유
+<small>스레드·인스타 등 선택 → 사진 자동 첨부 · 멘트는 자동 복사됨</small></button>
+
 <div class="cards">{imgs}</div>
-<h2>캡션 (복사해서 붙여넣기)</h2>
+
+<h2>멘트(캡션)</h2>
 <textarea id="cap" readonly>{cap_txt}</textarea>
-<button id="copy" data-cap="{cap_attr}">캡션 복사하기</button>
-<p class="tip">① 카드 이미지를 길게 눌러 저장 → ② 캡션 복사 → ③ 스레드에 사진 4장 + 캡션 올리기</p>
+<button class="copy" id="copy">멘트 복사하기</button>
+
+<h2>상품별 링크 (하나만 공유할 때)</h2>
+{links}
+
+<p class="tip">📱 <b>제일 쉬운 법</b>: 맨 위 <b>공유</b> 버튼 → 스레드 선택 → 사진이 붙습니다.
+멘트는 자동 복사돼 있으니 <b>붙여넣기</b>만 하면 끝.<br>
+공유가 안 되는 기기면: 카드 이미지를 길게 눌러 저장 → 멘트 복사 → 스레드에 올리기.</p>
+
 <script>
+var N={n};
+function flash(btn,msg){{ var o=btn.textContent; btn.textContent=msg;
+  setTimeout(function(){{ btn.textContent=o; }},1500); }}
+
+// 멘트 복사
 document.getElementById('copy').addEventListener('click',function(){{
   var t=document.getElementById('cap'); t.select();
-  var ok=function(){{ this.textContent='복사됨 ✓'; }}.bind(this);
-  if(navigator.clipboard){{ navigator.clipboard.writeText(t.value).then(ok,ok); }}
-  else {{ try{{document.execCommand('copy');}}catch(e){{}} ok(); }}
+  var self=this;
+  if(navigator.clipboard){{ navigator.clipboard.writeText(t.value).then(function(){{flash(self,'복사됨 ✓');}}); }}
+  else {{ try{{document.execCommand('copy');}}catch(e){{}} flash(self,'복사됨 ✓'); }}
+}});
+
+// 상품별 링크 복사
+[].forEach.call(document.querySelectorAll('.lk__b'),function(b){{
+  b.addEventListener('click',function(){{
+    var u=b.dataset.url;
+    if(navigator.clipboard){{ navigator.clipboard.writeText(u).then(function(){{flash(b,'복사됨 ✓');}}); }}
+    else {{ flash(b,u); }}
+  }});
+}});
+
+// 한 방 공유 (Web Share). 카드 이미지들을 파일로 첨부 + 멘트는 클립보드에 복사.
+document.getElementById('share').addEventListener('click',async function(){{
+  var cap=document.getElementById('cap').value;
+  try{{ await navigator.clipboard.writeText(cap); }}catch(e){{}}
+  try{{
+    var files=[];
+    for(var i=1;i<=N;i++){{
+      var r=await fetch(i+'.jpg'); var b=await r.blob();
+      files.push(new File([b],'deal'+i+'.jpg',{{type:'image/jpeg'}}));
+    }}
+    if(navigator.canShare && navigator.canShare({{files:files}})){{
+      await navigator.share({{files:files, text:cap}});
+      return;
+    }}
+  }}catch(e){{ if(e && e.name==='AbortError') return; }}
+  alert('이 기기는 바로 공유가 안 돼요. 멘트는 복사해뒀으니, 카드 이미지를 길게 눌러 저장한 뒤 스레드에 올려주세요.');
 }});
 </script>
 </body></html>
@@ -280,7 +347,7 @@ def main():
 
     generated_at = datetime.now(KST).strftime("%m/%d %H:%M")
     (OUT_DIR / "index.html").write_text(
-        viewer_html(len(deals), caption, generated_at), encoding="utf-8"
+        viewer_html(deals, caption, generated_at), encoding="utf-8"
     )
 
     print(f"[+] 카드 {len(deals)}장 + 캡션 생성 · docs/cards/")
