@@ -8,7 +8,7 @@
 <meta name="format-detection" content="telephone=no">
 <script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t;}catch(e){}</script>
 <title>핫딜 모음 · 토스쇼핑 반값 특가 | 특가레이더</title>
-<meta name="description" content="핫딜 모음 사이트 특가레이더. 토스쇼핑에서 50% 이상 할인되거나 30일 최저가인 상품만 자동으로 모아 보여줍니다. 07/30 16:49 기준 339개 특가 업데이트.">
+<meta name="description" content="핫딜 모음 사이트 특가레이더. 토스쇼핑에서 50% 이상 할인되거나 30일 최저가인 상품만 자동으로 모아 보여줍니다. 07/30 16:57 기준 339개 특가 업데이트.">
 <meta name="keywords" content="핫딜, 핫딜모음, 핫딜 사이트, 핫딜 정보, 오늘의 핫딜, 특가, 특가모음, 반값 특가, 최저가, 토스쇼핑, 토스 특가, 할인 정보, 오늘의 특가">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="favicon.svg">
@@ -18,7 +18,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="특가레이더">
 <meta property="og:title" content="핫딜 모음 · 토스쇼핑 반값 특가 | 특가레이더">
-<meta property="og:description" content="토스쇼핑 50% 이상 할인 · 30일 최저가 339개 · 07/30 16:49 갱신">
+<meta property="og:description" content="토스쇼핑 50% 이상 할인 · 30일 최저가 339개 · 07/30 16:57 갱신">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="핫딜 모음 · 토스쇼핑 반값 특가 | 특가레이더">
 <meta name="twitter:description" content="토스쇼핑 반값 이하 핫딜 특가 339개를 자동으로 모읍니다.">
@@ -111,8 +111,12 @@ header{padding:26px 0 16px}
 .chip__n{opacity:.55;font-size:11px;margin-left:3px;font-weight:600}
 .count{font-size:13px;color:var(--dim);font-weight:600;padding:14px 0 0}
 
-/* ── 레이아웃: 본문 + 인기 사이드 ── */
-.layout{display:grid;grid-template-columns:1fr 296px;gap:20px;align-items:start;margin:14px 0 40px}
+/* ── 레이아웃: 본문 + 인기 사이드 ──
+   1fr 대신 minmax(0,1fr) 로 트랙이 내부 콘텐츠 너비만큼 부풀지 않게 한다.
+   min-width:0 이 없으면 가로 스크롤 목록이 트랙을 밀어 화면이 넓어진다. */
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:20px;align-items:start;margin:14px 0 40px}
+.layout>main{min-width:0}
+.grid{min-width:0}
 
 /* ── 인기 사이드 ── */
 .popular{
@@ -201,10 +205,11 @@ footer{border-top:1px solid var(--line);padding:24px 0 90px;color:var(--dim);fon
 /* ── 태블릿: 인기 패널을 위로 가로 스크롤, 화살표 숨김(터치 스크롤) ── */
 @media(max-width:900px){
   .arrow{display:none!important}
-  .layout{grid-template-columns:1fr}
-  .popular{position:static;order:-1;padding:12px}
+  /* 세로 1열로 쌓되, 트랙이 내부 가로 콘텐츠에 밀려 넓어지지 않게 minmax(0,1fr) */
+  .layout{grid-template-columns:minmax(0,1fr);gap:16px}
+  .popular{position:static;order:-1;padding:12px;min-width:0;max-width:100%}
   .popular h2{font-size:14px}
-  .popular__list{flex-direction:row;overflow-x:auto;gap:8px;scrollbar-width:none}
+  .popular__list{flex-direction:row;overflow-x:auto;gap:8px;scrollbar-width:none;max-width:100%}
   .popular__list::-webkit-scrollbar{display:none}
   .pop{flex:0 0 190px;border-top:none;border:1px solid var(--line);border-radius:11px;padding:8px}
   .pop:first-child{border:1px solid var(--line)}
@@ -251,7 +256,7 @@ footer{border-top:1px solid var(--line);padding:24px 0 90px;color:var(--dim);fon
       50% 이상 할인되거나 30일 최저가인 상품만 골라, 하루에도 여러 번 새로 갱신합니다.
     </p>
     <div class="stats">
-      <div class="stat">갱신 <b>07/30 16:49</b></div>
+      <div class="stat">갱신 <b>07/30 16:57</b></div>
       <div class="stat">전체 <b>339</b></div>
       <div class="stat">70%↑ <b>75</b></div>
       <div class="stat">30일최저 <b>323</b></div>

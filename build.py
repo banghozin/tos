@@ -331,8 +331,12 @@ header{{padding:26px 0 16px}}
 .chip__n{{opacity:.55;font-size:11px;margin-left:3px;font-weight:600}}
 .count{{font-size:13px;color:var(--dim);font-weight:600;padding:14px 0 0}}
 
-/* ── 레이아웃: 본문 + 인기 사이드 ── */
-.layout{{display:grid;grid-template-columns:1fr 296px;gap:20px;align-items:start;margin:14px 0 40px}}
+/* ── 레이아웃: 본문 + 인기 사이드 ──
+   1fr 대신 minmax(0,1fr) 로 트랙이 내부 콘텐츠 너비만큼 부풀지 않게 한다.
+   min-width:0 이 없으면 가로 스크롤 목록이 트랙을 밀어 화면이 넓어진다. */
+.layout{{display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:20px;align-items:start;margin:14px 0 40px}}
+.layout>main{{min-width:0}}
+.grid{{min-width:0}}
 
 /* ── 인기 사이드 ── */
 .popular{{
@@ -421,10 +425,11 @@ footer{{border-top:1px solid var(--line);padding:24px 0 90px;color:var(--dim);fo
 /* ── 태블릿: 인기 패널을 위로 가로 스크롤, 화살표 숨김(터치 스크롤) ── */
 @media(max-width:900px){{
   .arrow{{display:none!important}}
-  .layout{{grid-template-columns:1fr}}
-  .popular{{position:static;order:-1;padding:12px}}
+  /* 세로 1열로 쌓되, 트랙이 내부 가로 콘텐츠에 밀려 넓어지지 않게 minmax(0,1fr) */
+  .layout{{grid-template-columns:minmax(0,1fr);gap:16px}}
+  .popular{{position:static;order:-1;padding:12px;min-width:0;max-width:100%}}
   .popular h2{{font-size:14px}}
-  .popular__list{{flex-direction:row;overflow-x:auto;gap:8px;scrollbar-width:none}}
+  .popular__list{{flex-direction:row;overflow-x:auto;gap:8px;scrollbar-width:none;max-width:100%}}
   .popular__list::-webkit-scrollbar{{display:none}}
   .pop{{flex:0 0 190px;border-top:none;border:1px solid var(--line);border-radius:11px;padding:8px}}
   .pop:first-child{{border:1px solid var(--line)}}
