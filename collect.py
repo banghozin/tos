@@ -284,6 +284,15 @@ def main():
         total += len(best)
 
     conn.close()
+
+    # 0개면 조용히 넘어가지 않는다. 예전엔 그대로 진행돼서 build 가 옛 데이터에
+    # 새 시각만 찍어 커밋 → "갱신됐는데 상품은 그대로"인 착시가 생겼다.
+    # 여기서 실패로 끝내야 이후 단계(발급/build/커밋)가 안 돌아 사이트는 마지막
+    # 정상본을 유지하고, GitHub 이 실패 알림 메일을 보낸다.
+    if total == 0:
+        sys.exit("[!] 수집된 상품이 0개입니다 — TBIZAUTH 토큰 만료(응답 resultType=FAIL) 가능성이 큽니다.\n"
+                 "    브라우저에서 쿠키를 다시 복사해 GitHub Secret 'TBIZAUTH' 를 갱신하세요. (배포 중단)")
+
     print(f"\n총 {total}개 적재 완료 · 스냅샷: snapshots/{stamp}_*.json")
     print("→ python report.py 로 특가를 확인하세요.")
 
