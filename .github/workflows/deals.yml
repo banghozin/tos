@@ -1,11 +1,13 @@
 name: 딜 수집
 
 on:
-  schedule:
-    # UTC 기준. 한국시간 약 07:17 / 12:17 / 18:17 / 22:17
-    # 정각(:00)은 GitHub 스케줄러가 가장 혼잡해 자주 드롭된다 → 17분으로 비켜 신뢰도를 높인다.
-    - cron: "17 22,3,9,13 * * *"
-  workflow_dispatch:        # 필요할 때 수동 실행
+  # ⚠️ 2026-08-10 스케줄 비활성화.
+  # 토스가 외국 IP(GitHub Actions 서버) 접근을 2차인증(TWO_FACTOR_REQUIRED)으로 막아
+  # 이 클라우드 자동수집은 더 이상 동작하지 않는다. 수집은 한국 IP 인 내 PC 에서
+  # '사이트갱신.cmd'(→ update_site.py) 로 돌린다.
+  # schedule:
+  #   - cron: "17 22,3,9,13 * * *"
+  workflow_dispatch:        # 기록용(수동 실행해도 외국 IP라 수집은 실패함)
 
 permissions:
   contents: write           # deals.db, docs/ 커밋용

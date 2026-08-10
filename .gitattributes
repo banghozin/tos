@@ -1,9 +1,19 @@
-# GitHub Actions 는 우분투에서 돈다. 셸 스크립트에 CRLF 가 들어가면
-# 줄 끝의 \r 때문에 "command not found" 로 깨진다. LF 로 고정한다.
-* text=auto eol=lf
+# 생성 파일 줄바꿈을 저장소에서 LF로 고정한다.
+# (윈도우 로컬에서 build.py/cards.py 가 파일을 쓰면 CRLF 가 되는데,
+#  이게 매번 전체 파일이 바뀐 것처럼 보이게 해 커밋을 부풀린다. 그 노이즈를 막는다.)
+*.html text eol=lf
+*.css  text eol=lf
+*.js   text eol=lf
+*.txt  text eol=lf
+*.xml  text eol=lf
+*.svg  text eol=lf
+*.md   text eol=lf
+*.py   text eol=lf
+*.yml  text eol=lf
+*.json text eol=lf
 
-# 윈도우에서 실행하는 배치 파일만 CRLF
-*.bat text eol=crlf
-
-# SQLite DB 는 절대 텍스트 변환하지 않는다
-*.db binary
+# 바이너리는 손대지 않는다.
+*.jpg  binary
+*.png  binary
+*.ico  binary
+*.db   binary
