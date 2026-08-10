@@ -247,7 +247,8 @@ def main():
             continue
 
         if payload.get("resultType") != "SUCCESS":
-            print(f"[-] {surface}: resultType={payload.get('resultType')} — 건너뜁니다")
+            print(f"[-] {surface}: resultType={payload.get('resultType')} "
+                  f"error={payload.get('error')} — 건너뜁니다")
             continue
 
         (SNAPSHOT_DIR / f"{stamp}_{surface}.json").write_text(
