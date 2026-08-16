@@ -229,6 +229,9 @@ def main():
     if pruned:
         print(f"[+] 지난 분기 관측 {pruned}개 정리 · 이번 분기({quarter_start[:10]}~) 데이터만 유지")
 
+    # 섹션 멤버십은 이번 수집 스냅샷으로 통째로 갈아끼운다(하루특가/베스트랭킹 목록용).
+    db.clear_section_items(conn)
+
     total = 0
 
     for i, surface in enumerate(surfaces):
@@ -273,6 +276,8 @@ def main():
             time.sleep(REQUEST_DELAY)
             rows, sec_total = fetch_section(m["code"], surface, env)
             for row in rows:
+                # 섹션별 랭킹 보존(dedup 과 무관하게 모든 섹션 멤버십을 기록)
+                db.put_section_item(conn, m["code"], row["product_id"], row.get("rank"))
                 cur = best.get(row["product_id"])
                 if cur is None or (row["display_price"] or 0) < (cur["display_price"] or 0):
                     best[row["product_id"]] = row

@@ -81,6 +81,17 @@ CREATE TABLE IF NOT EXISTS published (
     published_at  TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_pub_product ON published(product_id, channel);
+
+-- 상품이 어떤 섹션(TODAY_DEAL/BEST_SELLING 등)에 몇 위로 들어있는지.
+-- products 는 dedup 으로 상품당 섹션 하나만 남기므로, 섹션별 랭킹을 보여주려면
+-- 여기에 (섹션, 상품, 랭크)를 따로 저장해야 한다. 매 수집마다 통째로 갈아끼운다.
+CREATE TABLE IF NOT EXISTS section_items (
+    section_code TEXT NOT NULL,
+    product_id   INTEGER NOT NULL,
+    rank         INTEGER,
+    PRIMARY KEY (section_code, product_id)
+);
+CREATE INDEX IF NOT EXISTS idx_section ON section_items(section_code, rank);
 """
 
 PRODUCT_COLUMNS = [
@@ -163,6 +174,20 @@ def prune_observations_before(conn, cutoff_iso):
     cur = conn.execute("DELETE FROM observations WHERE observed_at < ?", (cutoff_iso,))
     conn.commit()
     return cur.rowcount
+
+
+def clear_section_items(conn):
+    """섹션 멤버십을 통째로 비운다. 매 수집 시작 때 호출해 현재 스냅샷으로 갈아끼운다."""
+    conn.execute("DELETE FROM section_items")
+
+
+def put_section_item(conn, section_code, product_id, rank):
+    """(섹션, 상품, 랭크) 하나를 기록한다."""
+    conn.execute(
+        """INSERT INTO section_items (section_code, product_id, rank) VALUES (?, ?, ?)
+           ON CONFLICT(section_code, product_id) DO UPDATE SET rank=excluded.rank""",
+        (section_code, product_id, rank),
+    )
 
 
 def put_categories(conn, tabs):

@@ -108,6 +108,34 @@ def fetch_deals(conn, min_discount, limit):
     return [dict(r) for r in rows]
 
 
+def fetch_section_products(conn, section_code, limit, by_rank=True):
+    """특정 섹션(TODAY_DEAL/BEST_SELLING 등)의 상품을 가져온다. 링크 있는 것만.
+
+    by_rank=True  → 토스 섹션 랭킹 순(베스트랭킹용)
+    by_rank=False → 할인율 높은 순(하루특가 카드용)
+    """
+    order = "si.rank ASC" if by_rank else "COALESCE(p.effective_rate, p.discount_rate) DESC"
+    rows = conn.execute(
+        f"""
+        SELECT p.*, s.short_url, c.name AS category_name, si.rank AS section_rank
+        FROM section_items si
+        JOIN products p    ON p.product_id = si.product_id
+        JOIN sharelinks s  ON s.product_id = p.product_id
+        LEFT JOIN categories c ON c.category_id = p.category_l1
+        WHERE si.section_code = ? AND p.is_sold_out = 0
+        ORDER BY {order}, p.effective_price ASC
+        LIMIT ?
+        """,
+        (section_code, limit),
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def pp_url(deal):
+    """개별 상품 페이지 경로(사이트 내부 상대링크). index.html 과 같은 폴더 기준."""
+    return f"p/{deal.get('product_id')}.html"
+
+
 def won(n):
     return f"{n:,}" if isinstance(n, int) else "-"
 
@@ -132,7 +160,7 @@ def card_html(deal):
     rate = rate_of(deal)
     name = html.escape(deal.get("display_name") or "")
     thumb = html.escape(deal.get("thumbnail_url") or "")
-    url = html.escape(deal.get("short_url") or "")
+    purl = html.escape(pp_url(deal))  # 이제 카드는 토스가 아니라 개별 페이지로 (그래프 노출)
     lowest = bool(deal.get("is_lowest_30d"))
     end = deadline_of(deal)
 
@@ -148,7 +176,7 @@ def card_html(deal):
         )
 
     return f"""
-      <a class="card" href="{url}" target="_blank" rel="nofollow sponsored noopener"
+      <a class="card" href="{purl}" target="_blank" rel="noopener"
          data-rate="{rate}" data-low="{int(lowest)}" data-end="{html.escape(end or '')}"
          data-cat="{deal.get('category_l1') or ''}" data-id="{deal.get('product_id')}">
         <div class="card__media">
@@ -180,9 +208,9 @@ def popular_html(deals, k=8):
     for i, d in enumerate(ranked, 1):
         name = html.escape(d.get("display_name") or "")
         thumb = html.escape(d.get("thumbnail_url") or "")
-        url = html.escape(d.get("short_url") or "")
+        url = html.escape(pp_url(d))
         rows.append(f"""
-        <a class="pop" href="{url}" target="_blank" rel="nofollow sponsored noopener">
+        <a class="pop" href="{url}" target="_blank" rel="noopener">
           <span class="pop__rank">{i}</span>
           <img src="{thumb}" alt="{name}" loading="lazy">
           <span class="pop__info">
@@ -196,6 +224,74 @@ def popular_html(deals, k=8):
         <p class="popular__note">토스쇼핑에서 많이 본 상품 순</p>
         <div class="popular__list">{''.join(rows)}</div>
       </aside>"""
+
+
+def today_deal_html(items):
+    """하루특가 가로 캐러셀. 데스크톱 3개 노출 + 화살표, 모바일 터치 스크롤.
+    기존 .filterrow/.filters/.arrow 구조를 재사용해 화살표 JS를 그대로 쓴다."""
+    if not items:
+        return ""
+    cards = []
+    for d in items:
+        name = html.escape(d.get("display_name") or "")
+        thumb = html.escape(d.get("thumbnail_url") or "")
+        purl = html.escape(pp_url(d))
+        low = '<span class="badge badge--low">30일 최저가</span>' if d.get("is_lowest_30d") else ""
+        cards.append(f"""
+          <a class="dealcard" href="{purl}" target="_blank" rel="noopener">
+            <div class="dealcard__media">
+              <img src="{thumb}" alt="{name}" loading="lazy">
+              <div class="dealcard__rate"><b>{rate_of(d)}</b><i>%</i></div>
+            </div>
+            <p class="dealcard__name">{name}</p>
+            <div class="dealcard__price"><span class="price">{won(price_of(d))}<em>원</em></span></div>
+            <div class="dealcard__badges">{low}</div>
+          </a>""")
+    return f"""
+      <section class="dealsec" aria-label="오늘의 하루특가">
+        <h2 class="sec-h">🔥 오늘의 하루특가 <span class="sec-h__note">오늘만 이 가격</span></h2>
+        <div class="filterrow dealrow">
+          <button class="arrow arrow--l" data-dir="-1" tabindex="-1" aria-label="왼쪽으로">‹</button>
+          <div class="filters filters--deal">{''.join(cards)}</div>
+          <button class="arrow arrow--r" data-dir="1" tabindex="-1" aria-label="오른쪽으로">›</button>
+        </div>
+      </section>"""
+
+
+def best_ranking_html(items):
+    """베스트랭킹(BEST_SELLING) 번호 매긴 목록."""
+    if not items:
+        return ""
+    rows = []
+    for i, d in enumerate(items, 1):
+        name = html.escape(d.get("display_name") or "")
+        thumb = html.escape(d.get("thumbnail_url") or "")
+        purl = html.escape(pp_url(d))
+        badges = []
+        if d.get("is_lowest_30d"):
+            badges.append('<span class="badge badge--low">30일 최저가</span>')
+        if d.get("review_count"):
+            badges.append(
+                f'<span class="badge badge--quiet">★ {d.get("review_score")} '
+                f'({won(d["review_count"])})</span>'
+            )
+        orig = d.get("original_price")
+        was = f'<s class="was">{won(orig)}원</s>' if orig else ""
+        rows.append(f"""
+        <li><a class="rankrow" href="{purl}" target="_blank" rel="noopener">
+          <span class="rankrow__no">{i}</span>
+          <img src="{thumb}" alt="{name}" loading="lazy">
+          <span class="rankrow__info">
+            <span class="rankrow__name">{name}</span>
+            <span class="rankrow__badges">{''.join(badges)}</span>
+            <span class="rankrow__price"><b>{rate_of(d)}%</b> {won(price_of(d))}원 {was}</span>
+          </span>
+        </a></li>""")
+    return f"""
+      <section class="bestrank" aria-label="지금 많이 팔리는 BEST">
+        <h2 class="sec-h">지금 많이 팔리는 <span class="sec-h__hl">BEST</span></h2>
+        <ol class="rank-list">{''.join(rows)}</ol>
+      </section>"""
 
 
 def category_chips(deals):
@@ -501,9 +597,11 @@ def product_page_html(deal, chart_svg):
 """
 
 
-def render(deals, generated_at):
+def render(deals, today_deals, best_ranking, generated_at):
     cards = "".join(card_html(d) for d in deals)
     popular = popular_html(deals)
+    today_html = today_deal_html(today_deals)
+    best_html = best_ranking_html(best_ranking)
     n_all = len(deals)
     n70 = sum(1 for d in deals if (d.get("effective_rate") or 0) >= 70)
     n_low = sum(1 for d in deals if d.get("is_lowest_30d"))
@@ -705,6 +803,49 @@ header{{padding:26px 0 16px}}
 
 .empty{{padding:60px 0;text-align:center;color:var(--dim);font-size:14px}}
 
+/* ── 상단 섹션: 하루특가 캐러셀 + 베스트랭킹 ── */
+.sec-h{{font-size:17px;font-weight:800;letter-spacing:-.02em;margin:22px 0 10px}}
+.sec-h__note{{font-size:12px;font-weight:600;color:var(--dim);margin-left:4px}}
+.sec-h__hl{{color:var(--blue)}}
+/* 하루특가 카드(가로 스크롤 아이템). .filters--deal 은 기존 .filters 스트립 재사용 */
+.filters--deal{{gap:10px;align-items:stretch}}
+.dealcard{{
+  flex:0 0 calc((100% - 20px)/3); min-width:0; text-decoration:none;
+  background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;
+  display:flex;flex-direction:column;transition:box-shadow .18s,border-color .18s;
+}}
+.dealcard:hover{{box-shadow:0 8px 20px var(--shadow);border-color:color-mix(in srgb,var(--blue) 35%,var(--line))}}
+.dealcard__media{{position:relative;aspect-ratio:1/1;background:var(--imgbg)}}
+.dealcard__media img{{width:100%;height:100%;object-fit:cover}}
+.dealcard__rate{{position:absolute;left:8px;top:8px;background:var(--blue);color:#fff;
+  display:flex;align-items:baseline;padding:3px 8px;border-radius:8px;font-weight:800;
+  box-shadow:0 3px 10px rgba(47,107,255,.35)}}
+.dealcard__rate b{{font-size:16px;line-height:1}}
+.dealcard__rate i{{font-size:10px;font-style:normal;margin-left:1px}}
+.dealcard__name{{font-size:12.5px;line-height:1.35;color:var(--ink);padding:8px 10px 0;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.7em}}
+.dealcard__price{{padding:2px 10px 0}}
+.dealcard__price .price{{font-weight:800;font-size:17px;color:var(--ink)}}
+.dealcard__price .price em{{font-style:normal;font-size:11px;font-weight:600;margin-left:1px}}
+.dealcard__badges{{padding:6px 10px 10px;display:flex;flex-wrap:wrap;gap:4px;margin-top:auto}}
+/* 베스트랭킹 목록 (2열) */
+.bestrank{{margin-bottom:6px}}
+.rank-list{{list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:0 20px}}
+.rankrow{{display:flex;align-items:center;gap:11px;padding:9px 0;text-decoration:none;border-top:1px solid var(--line)}}
+.rankrow__no{{flex:0 0 auto;width:22px;text-align:center;font-weight:800;font-size:16px;color:var(--blue)}}
+.rankrow img{{width:52px;height:52px;border-radius:10px;object-fit:cover;flex:0 0 auto;background:var(--imgbg)}}
+.rankrow__info{{display:flex;flex-direction:column;gap:3px;min-width:0}}
+.rankrow__name{{font-size:13px;line-height:1.35;color:var(--ink);
+  display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}}
+.rankrow__badges{{display:flex;flex-wrap:wrap;gap:4px}}
+.rankrow__price{{font-size:12.5px;color:var(--dim);font-weight:600}}
+.rankrow__price b{{color:var(--hot);font-weight:800;margin-right:3px}}
+.rankrow__price .was{{font-size:11px;color:#9aa2b5;margin-left:4px}}
+@media(max-width:720px){{
+  .rank-list{{grid-template-columns:1fr}}
+  .dealcard{{flex:0 0 44%}}
+}}
+
 /* ── 맨 위로 버튼 ── */
 .totop{{
   position:fixed;right:16px;bottom:max(16px,env(safe-area-inset-bottom));
@@ -783,6 +924,9 @@ footer{{border-top:1px solid var(--line);padding:24px 0 90px;color:var(--dim);fo
       <div class="stat">30일최저 <b>{n_low}</b></div>
     </div>
   </header>
+
+  {today_html}
+  {best_html}
 
   <div class="filterbar">
     <div class="filterrow">
@@ -957,6 +1101,9 @@ def main():
 
     conn = db.connect()
     deals = fetch_deals(conn, args.min_discount, args.limit)
+    # 상단 섹션: 하루특가(랭크순 최대 24) + 베스트랭킹(랭크순 15)
+    today_deals = fetch_section_products(conn, "TODAY_DEAL", 24, by_rank=True)
+    best_ranking = fetch_section_products(conn, "BEST_SELLING", 15, by_rank=True)
 
     if not deals:
         conn.close()
@@ -967,18 +1114,23 @@ def main():
     generated_at = datetime.now(KST).strftime("%m/%d %H:%M")
     now_iso = datetime.now(KST).strftime("%Y-%m-%d")
     OUT_DIR.mkdir(exist_ok=True)
-    (OUT_DIR / "index.html").write_text(render(deals, generated_at), encoding="utf-8")
+    (OUT_DIR / "index.html").write_text(
+        render(deals, today_deals, best_ranking, generated_at), encoding="utf-8"
+    )
     (OUT_DIR / "favicon.svg").write_text(FAVICON_SVG, encoding="utf-8")
     (OUT_DIR / ".nojekyll").write_text("", encoding="utf-8")
 
     # 개별 상품 페이지(공유용). 검색엔 안 태우고(noindex) sitemap 에도 안 넣는다.
+    # 메인 그리드 + 하루특가 + 베스트랭킹에 나오는 모든 상품에 대해 생성(합집합).
     pdir = OUT_DIR / "p"
     pdir.mkdir(exist_ok=True)
-    current_ids = set()
-    for d in deals:
+    page_products = {}
+    for d in deals + today_deals + best_ranking:
         pid = d.get("product_id")
-        if pid is None:
-            continue
+        if pid is not None:
+            page_products.setdefault(pid, d)
+    current_ids = set()
+    for pid, d in page_products.items():
         current_ids.add(str(pid))
         chart = price_chart_svg(fetch_price_history(conn, pid))
         (pdir / f"{pid}.html").write_text(product_page_html(d, chart), encoding="utf-8")

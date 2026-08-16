@@ -19,7 +19,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
 import db
-from build import DISCLOSURE, SITE_URL, SITE_NAME, fetch_deals, won
+from build import DISCLOSURE, SITE_URL, SITE_NAME, fetch_section_products, won
 
 for _stream in (sys.stdout, sys.stderr):
     if hasattr(_stream, "reconfigure"):
@@ -325,12 +325,13 @@ def main():
     args = ap.parse_args()
 
     conn = db.connect()
-    deals = fetch_deals(conn, args.min_discount, 200)
+    # '오늘의 특가'니까 하루특가(TODAY_DEAL)에서, 할인율 높은 순으로 뽑는다.
+    deals = fetch_section_products(conn, "TODAY_DEAL", 60, by_rank=False)
     conn.close()
     # 썸네일 있는 것만, 상위 count개
     deals = [d for d in deals if d.get("thumbnail_url")][: args.count]
     if not deals:
-        print("[!] 카드로 만들 딜이 없습니다. collect.py → issue.py 를 먼저 도세요.")
+        print("[!] 카드로 만들 하루특가가 없습니다. collect.py → issue.py 를 먼저 도세요.")
         return
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)

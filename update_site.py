@@ -48,7 +48,7 @@ def main():
         raise
 
     # 2) 발급 → 3) 사이트 → 4) 카드
-    step("쉐어링크 발급(새 상품만)", [py, "issue.py", "--limit", "40"])
+    step("쉐어링크 발급(새 상품만)", [py, "issue.py", "--limit", "80"])
     step("사이트 생성", [py, "build.py"])
     step("딜 카드 생성", [py, "cards.py"])
 

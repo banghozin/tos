@@ -72,7 +72,9 @@ def targets(conn, min_discount, limit):
           AND p.link_issuable = 1
           AND p.taca_item_id IS NOT NULL
           AND p.is_sold_out = 0
-          AND (COALESCE(p.effective_rate, p.discount_rate) >= ? OR p.is_lowest_30d = 1)
+          AND (COALESCE(p.effective_rate, p.discount_rate) >= ? OR p.is_lowest_30d = 1
+               OR p.product_id IN (SELECT product_id FROM section_items
+                                    WHERE section_code IN ('TODAY_DEAL', 'BEST_SELLING')))
         ORDER BY COALESCE(p.effective_rate, p.discount_rate) DESC
     """
     params = [min_discount]
