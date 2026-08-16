@@ -187,16 +187,14 @@ def make_card(deal, rank):
 
 
 def build_caption(deals):
-    """스레드용 캡션. 500자 이내 + 태그 1개 + 고지문구."""
+    """스레드용 캡션. 상품명+가격만. 500자 이내 + 태그 1개 + 고지문구."""
     lines = ["오늘의 토스쇼핑 특가 🔥", ""]
     for i, dl in enumerate(deals, 1):
         name = (dl.get("display_name") or "").strip()
-        if len(name) > 18:
-            name = name[:18] + "…"
-        rate = dl.get("effective_rate")
-        if rate is None:
-            rate = dl.get("discount_rate") or 0
-        lines.append(f"{i}. {name} {rate}%")
+        if len(name) > 20:
+            name = name[:20] + "…"
+        price = dl.get("effective_price") or dl.get("display_price") or 0
+        lines.append(f"{i}. {name} {won(price)}원")
     lines += ["", "전체 특가 → hotdeal.help", DISCLOSURE, "#핫딜"]
     cap = "\n".join(lines)
     # 스레드 500자 제한 안전장치
@@ -322,7 +320,7 @@ document.getElementById('share').addEventListener('click',async function(){{
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--count", type=int, default=4)
+    ap.add_argument("--count", type=int, default=5)
     ap.add_argument("--min-discount", type=int, default=50)
     args = ap.parse_args()
 
