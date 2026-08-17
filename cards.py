@@ -202,7 +202,9 @@ def build_caption(deals):
     '첫 댓글'(build_comment)에 단다. 고지문구는 링크가 없어 4개 제한과 무관하고,
     공정위 지침상 첫 화면에 노출돼야 하므로 본문에 유지한다.
     """
-    lines = ["오늘의 토스쇼핑 특가 🔥", ""]
+    # 첫 줄·끝 줄에 검색어(토스쇼핑·핫딜·특가·반값·최저가)를 자연스럽게 녹인다.
+    # 스레드 검색은 본문 '단어'를 훑으므로, #태그 나열보다 이게 유효하다.
+    lines = ["오늘의 토스쇼핑 핫딜 🔥 오늘 가장 많이 깎인 특가", ""]
     for i, dl in enumerate(deals, 1):
         name = (dl.get("display_name") or "").strip()
         if len(name) > 20:
@@ -212,7 +214,7 @@ def build_caption(deals):
         lines.append(f"{i}. {name} {won(price)}원")
         if i <= LINK_CAP and pid:
             lines.append(f"{SITE_URL}/p/{pid}.html" if SITE_URL else f"p/{pid}.html")
-    lines += ["", DISCLOSURE]
+    lines += ["", "매일 여러 번 갱신 · 토스쇼핑 반값·최저가 특가", DISCLOSURE]
     return "\n".join(lines)
 
 
