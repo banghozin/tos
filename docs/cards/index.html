@@ -30,46 +30,56 @@ button.copy{margin-top:10px;width:100%;padding:13px;border:none;border-radius:12
 </style></head>
 <body>
 <h1>🔥 오늘의 딜 카드뉴스</h1>
-<p class="sub">08/18 02:37 기준 · 버튼 하나로 스레드에 공유</p>
+<p class="sub">08/18 02:46 기준 · 버튼 하나로 스레드에 공유</p>
 
-<button class="share" id="share">📤 카드 4장 + 멘트 한 번에 공유
-<small>스레드·인스타 등 선택 → 사진 자동 첨부 · 멘트는 자동 복사됨</small></button>
+<button class="share" id="share">📤 카드 4장 + 본문 한 번에 공유
+<small>스레드·인스타 등 선택 → 사진 자동 첨부 · 본문은 자동 복사됨</small></button>
 
-<div class="cards"><img class="c" src="1.jpg" alt="딜 카드 1" loading="lazy"><img class="c" src="2.jpg" alt="딜 카드 2" loading="lazy"><img class="c" src="3.jpg" alt="딜 카드 3" loading="lazy"><img class="c" src="4.jpg" alt="딜 카드 4" loading="lazy"><img class="c" src="5.jpg" alt="딜 카드 5" loading="lazy"></div>
+<div class="cards"><img class="c" src="1.jpg" alt="딜 카드 1" loading="lazy"><img class="c" src="2.jpg" alt="딜 카드 2" loading="lazy"><img class="c" src="3.jpg" alt="딜 카드 3" loading="lazy"><img class="c" src="4.jpg" alt="딜 카드 4" loading="lazy"></div>
 
-<h2>멘트(캡션)</h2>
+<h2>① 본문 (붙여넣기)</h2>
 <textarea id="cap" readonly>오늘의 토스쇼핑 특가 🔥
 
 1. 투라 뱀파이어 여신 쿠션 팩트, 21… 22,400원
+https://hotdeal.help/p/365684749.html
 2. 케어란스 덴탈 브레스 잇몸 충치 치약… 8,900원
+https://hotdeal.help/p/89047893.html
 3. 뉴리스 필터 샤워기, 본품 1개 + … 9,800원
+https://hotdeal.help/p/86251473.html
 4. 닿자마자 시원한 아이스 쿨 냉감이불 … 9,900원
-5. 여름 쿠션 양말, 블랙, 10개 8,231원
+https://hotdeal.help/p/746485355.html
 
-전체 특가 → hotdeal.help
-✱ 이 사이트는 토스쇼핑 쉐어링크 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.
-#핫딜</textarea>
-<button class="copy" id="copy">멘트 복사하기</button>
+✱ 이 사이트는 토스쇼핑 쉐어링크 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.</textarea>
+<button class="copy" id="copy">본문 복사하기</button>
+
+<h2>② 댓글 (게시 후 첫 댓글로)</h2>
+<textarea id="cmt" readonly style="height:70px">전체 특가 → hotdeal.help</textarea>
+<button class="copy" id="copycmt">댓글 복사하기</button>
 
 <h2>상품별 링크 (하나만 공유할 때)</h2>
-<div class="lk"><span class="lk__n">1. 투라 뱀파이어 여신 쿠션 팩트, 21호, 케이스 랜…</span><button class="lk__b" data-url="https://hotdeal.help/p/365684749.html">링크 복사</button></div><div class="lk"><span class="lk__n">2. 케어란스 덴탈 브레스 잇몸 충치 치약, 100g, …</span><button class="lk__b" data-url="https://hotdeal.help/p/89047893.html">링크 복사</button></div><div class="lk"><span class="lk__n">3. 뉴리스 필터 샤워기, 본품 1개 + 필터 6개, 1…</span><button class="lk__b" data-url="https://hotdeal.help/p/86251473.html">링크 복사</button></div><div class="lk"><span class="lk__n">4. 닿자마자 시원한 아이스 쿨 냉감이불 여름 숙면 열대…</span><button class="lk__b" data-url="https://hotdeal.help/p/746485355.html">링크 복사</button></div><div class="lk"><span class="lk__n">5. 여름 쿠션 양말, 블랙, 10개</span><button class="lk__b" data-url="https://hotdeal.help/p/518356177.html">링크 복사</button></div>
+<div class="lk"><span class="lk__n">1. 투라 뱀파이어 여신 쿠션 팩트, 21호, 케이스 랜…</span><button class="lk__b" data-url="https://hotdeal.help/p/365684749.html">링크 복사</button></div><div class="lk"><span class="lk__n">2. 케어란스 덴탈 브레스 잇몸 충치 치약, 100g, …</span><button class="lk__b" data-url="https://hotdeal.help/p/89047893.html">링크 복사</button></div><div class="lk"><span class="lk__n">3. 뉴리스 필터 샤워기, 본품 1개 + 필터 6개, 1…</span><button class="lk__b" data-url="https://hotdeal.help/p/86251473.html">링크 복사</button></div><div class="lk"><span class="lk__n">4. 닿자마자 시원한 아이스 쿨 냉감이불 여름 숙면 열대…</span><button class="lk__b" data-url="https://hotdeal.help/p/746485355.html">링크 복사</button></div>
 
-<p class="tip">📱 <b>제일 쉬운 법</b>: 맨 위 <b>공유</b> 버튼 → 스레드 선택 → 사진이 붙습니다.
-멘트는 자동 복사돼 있으니 <b>붙여넣기</b>만 하면 끝.<br>
-공유가 안 되는 기기면: 카드 이미지를 길게 눌러 저장 → 멘트 복사 → 스레드에 올리기.</p>
+<p class="tip">📱 <b>순서</b>: 맨 위 <b>공유</b> 버튼 → 스레드 선택 → 사진 첨부됨 → <b>본문 붙여넣기</b> → 게시.
+게시 후 <b>댓글 복사하기</b> → 그 글의 <b>첫 댓글</b>로 붙여넣기.<br>
+(스레드 본문은 링크가 4개까지라, 사이트 전체 링크는 댓글로 답니다.)<br>
+공유가 안 되는 기기면: 카드 이미지를 길게 눌러 저장 → 본문·댓글 복사 → 스레드에 올리기.</p>
 
 <script>
-var N=5;
+var N=4;
 function flash(btn,msg){ var o=btn.textContent; btn.textContent=msg;
   setTimeout(function(){ btn.textContent=o; },1500); }
 
-// 멘트 복사
-document.getElementById('copy').addEventListener('click',function(){
-  var t=document.getElementById('cap'); t.select();
-  var self=this;
-  if(navigator.clipboard){ navigator.clipboard.writeText(t.value).then(function(){flash(self,'복사됨 ✓');}); }
-  else { try{document.execCommand('copy');}catch(e){} flash(self,'복사됨 ✓'); }
-});
+// 본문/댓글 복사
+function bindCopy(btnId, taId){
+  document.getElementById(btnId).addEventListener('click',function(){
+    var t=document.getElementById(taId); t.select();
+    var self=this;
+    if(navigator.clipboard){ navigator.clipboard.writeText(t.value).then(function(){flash(self,'복사됨 ✓');}); }
+    else { try{document.execCommand('copy');}catch(e){} flash(self,'복사됨 ✓'); }
+  });
+}
+bindCopy('copy','cap');
+bindCopy('copycmt','cmt');
 
 // 상품별 링크 복사
 [].forEach.call(document.querySelectorAll('.lk__b'),function(b){

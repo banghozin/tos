@@ -186,29 +186,48 @@ def make_card(deal, rank):
     return card
 
 
+LINK_CAP = 4  # 스레드 본문은 링크 최대 4개까지. 초과분은 이름·가격만.
+
+
+def _site_domain():
+    if SITE_URL:
+        return SITE_URL.replace("https://", "").replace("http://", "").rstrip("/")
+    return "hotdeal.help"
+
+
 def build_caption(deals):
-    """스레드용 캡션. 상품명+가격만. 500자 이내 + 태그 1개 + 고지문구."""
+    """스레드 '본문'. 상품별 개별 링크(최대 4개) + 고지문구.
+
+    스레드는 본문 링크가 4개까지라, 사이트 전체 링크는 본문이 아니라
+    '첫 댓글'(build_comment)에 단다. 고지문구는 링크가 없어 4개 제한과 무관하고,
+    공정위 지침상 첫 화면에 노출돼야 하므로 본문에 유지한다.
+    """
     lines = ["오늘의 토스쇼핑 특가 🔥", ""]
     for i, dl in enumerate(deals, 1):
         name = (dl.get("display_name") or "").strip()
         if len(name) > 20:
             name = name[:20] + "…"
         price = dl.get("effective_price") or dl.get("display_price") or 0
+        pid = dl.get("product_id")
         lines.append(f"{i}. {name} {won(price)}원")
-    lines += ["", "전체 특가 → hotdeal.help", DISCLOSURE, "#핫딜"]
-    cap = "\n".join(lines)
-    # 스레드 500자 제한 안전장치
-    if len(cap) > 490:
-        cap = cap[:487] + "…"
-    return cap
+        if i <= LINK_CAP and pid:
+            lines.append(f"{SITE_URL}/p/{pid}.html" if SITE_URL else f"p/{pid}.html")
+    lines += ["", DISCLOSURE]
+    return "\n".join(lines)
 
 
-def viewer_html(deals, caption, generated_at):
+def build_comment():
+    """게시 후 첫 댓글로 달 내용. 본문 링크 4개를 다 써서 전체 링크는 여기에 둔다."""
+    return f"전체 특가 → {_site_domain()}"
+
+
+def viewer_html(deals, caption, comment, generated_at):
     n = len(deals)
     imgs = "".join(
         f'<img class="c" src="{i}.jpg" alt="딜 카드 {i}" loading="lazy">' for i in range(1, n + 1)
     )
     cap_txt = caption.replace("&", "&amp;").replace("<", "&lt;")
+    cmt_txt = comment.replace("&", "&amp;").replace("<", "&lt;")
 
     # 상품별 공유 링크(개별 페이지). 특정 상품 하나만 공유하고 싶을 때.
     link_rows = []
@@ -258,34 +277,43 @@ button.copy{{margin-top:10px;width:100%;padding:13px;border:none;border-radius:1
 <h1>🔥 오늘의 딜 카드뉴스</h1>
 <p class="sub">{generated_at} 기준 · 버튼 하나로 스레드에 공유</p>
 
-<button class="share" id="share">📤 카드 4장 + 멘트 한 번에 공유
-<small>스레드·인스타 등 선택 → 사진 자동 첨부 · 멘트는 자동 복사됨</small></button>
+<button class="share" id="share">📤 카드 {n}장 + 본문 한 번에 공유
+<small>스레드·인스타 등 선택 → 사진 자동 첨부 · 본문은 자동 복사됨</small></button>
 
 <div class="cards">{imgs}</div>
 
-<h2>멘트(캡션)</h2>
+<h2>① 본문 (붙여넣기)</h2>
 <textarea id="cap" readonly>{cap_txt}</textarea>
-<button class="copy" id="copy">멘트 복사하기</button>
+<button class="copy" id="copy">본문 복사하기</button>
+
+<h2>② 댓글 (게시 후 첫 댓글로)</h2>
+<textarea id="cmt" readonly style="height:70px">{cmt_txt}</textarea>
+<button class="copy" id="copycmt">댓글 복사하기</button>
 
 <h2>상품별 링크 (하나만 공유할 때)</h2>
 {links}
 
-<p class="tip">📱 <b>제일 쉬운 법</b>: 맨 위 <b>공유</b> 버튼 → 스레드 선택 → 사진이 붙습니다.
-멘트는 자동 복사돼 있으니 <b>붙여넣기</b>만 하면 끝.<br>
-공유가 안 되는 기기면: 카드 이미지를 길게 눌러 저장 → 멘트 복사 → 스레드에 올리기.</p>
+<p class="tip">📱 <b>순서</b>: 맨 위 <b>공유</b> 버튼 → 스레드 선택 → 사진 첨부됨 → <b>본문 붙여넣기</b> → 게시.
+게시 후 <b>댓글 복사하기</b> → 그 글의 <b>첫 댓글</b>로 붙여넣기.<br>
+(스레드 본문은 링크가 4개까지라, 사이트 전체 링크는 댓글로 답니다.)<br>
+공유가 안 되는 기기면: 카드 이미지를 길게 눌러 저장 → 본문·댓글 복사 → 스레드에 올리기.</p>
 
 <script>
 var N={n};
 function flash(btn,msg){{ var o=btn.textContent; btn.textContent=msg;
   setTimeout(function(){{ btn.textContent=o; }},1500); }}
 
-// 멘트 복사
-document.getElementById('copy').addEventListener('click',function(){{
-  var t=document.getElementById('cap'); t.select();
-  var self=this;
-  if(navigator.clipboard){{ navigator.clipboard.writeText(t.value).then(function(){{flash(self,'복사됨 ✓');}}); }}
-  else {{ try{{document.execCommand('copy');}}catch(e){{}} flash(self,'복사됨 ✓'); }}
-}});
+// 본문/댓글 복사
+function bindCopy(btnId, taId){{
+  document.getElementById(btnId).addEventListener('click',function(){{
+    var t=document.getElementById(taId); t.select();
+    var self=this;
+    if(navigator.clipboard){{ navigator.clipboard.writeText(t.value).then(function(){{flash(self,'복사됨 ✓');}}); }}
+    else {{ try{{document.execCommand('copy');}}catch(e){{}} flash(self,'복사됨 ✓'); }}
+  }});
+}}
+bindCopy('copy','cap');
+bindCopy('copycmt','cmt');
 
 // 상품별 링크 복사
 [].forEach.call(document.querySelectorAll('.lk__b'),function(b){{
@@ -320,7 +348,7 @@ document.getElementById('share').addEventListener('click',async function(){{
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--count", type=int, default=5)
+    ap.add_argument("--count", type=int, default=4)
     ap.add_argument("--min-discount", type=int, default=50)
     args = ap.parse_args()
 
@@ -342,11 +370,13 @@ def main():
         print(f"    [+] cards/{i}.jpg · TOP{i} · {deal.get('display_name','')[:24]}")
 
     caption = build_caption(deals)
+    comment = build_comment()
     (OUT_DIR / "caption.txt").write_text(caption, encoding="utf-8")
+    (OUT_DIR / "comment.txt").write_text(comment, encoding="utf-8")
 
     generated_at = datetime.now(KST).strftime("%m/%d %H:%M")
     (OUT_DIR / "index.html").write_text(
-        viewer_html(deals, caption, generated_at), encoding="utf-8"
+        viewer_html(deals, caption, comment, generated_at), encoding="utf-8"
     )
 
     print(f"[+] 카드 {len(deals)}장 + 캡션 생성 · docs/cards/")
