@@ -35,7 +35,7 @@ BLUE = (47, 107, 255)
 INK = (20, 27, 46)
 DIM = (105, 113, 138)
 LINE = (227, 233, 242)
-HOT = (229, 72, 77)
+HOT = (224, 48, 74)
 BG = (255, 255, 255)
 IMGBG = (240, 243, 248)
 WHITE = (255, 255, 255)
@@ -140,17 +140,17 @@ def make_card(deal, rank):
     d.text((S - M, M + pill_h / 2), "hotdeal.help", font=bf, fill=DIM, anchor="rm")
 
     # 상품 이미지 (둥근 모서리)
-    img_side = 560
+    img_side = 520
     ix = (S - img_side) // 2
-    iy = M + pill_h + 40
+    iy = M + pill_h + 44
     d.rounded_rectangle([ix, iy, ix + img_side, iy + img_side], 32, fill=IMGBG)
     thumb = download_image(deal.get("thumbnail_url"))
     if thumb is not None:
         thumb = rounded(thumb.resize((img_side, img_side)), 32)
         card.paste(thumb, (ix, iy), thumb)
 
-    # 할인율 · 가격
-    ty = iy + img_side + 44
+    # 할인율 · 가격 (이미지와 텍스트 사이 여백을 넉넉히)
+    ty = iy + img_side + 96
     rate = deal.get("effective_rate")
     if rate is None:
         rate = deal.get("discount_rate") or 0
@@ -158,7 +158,7 @@ def make_card(deal, rank):
     orig = deal.get("original_price")
 
     df = font(118, bold=True)
-    d.text((M, ty), f"{rate}%", font=df, fill=BLUE, anchor="lm")
+    d.text((M, ty), f"{rate}%", font=df, fill=HOT, anchor="lm")
     rate_w = d.textlength(f"{rate}%", font=df)
 
     pf = font(72, bold=True)
@@ -172,11 +172,11 @@ def make_card(deal, rank):
         d.line([px, ty + 34, px + owid, ty + 34], fill=DIM, width=3)
 
     # 상품명 (최대 2줄)
-    ny = ty + 96
+    ny = ty + 104
     nf = font(42, bold=True)
     for line in wrap(d, deal.get("display_name") or "", nf, S - 2 * M, max_lines=2):
         d.text((M, ny), line, font=nf, fill=INK, anchor="lm")
-        ny += 58
+        ny += 60
 
     # 하단 안내
     d.line([M, S - 96, S - M, S - 96], fill=LINE, width=2)
