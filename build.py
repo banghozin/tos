@@ -77,6 +77,39 @@ DISCLOSURE = "✱ 이 사이트는 토스쇼핑 쉐어링크 활동의 일환으
 ANALYTICS = ('<script data-goatcounter="https://whrlaos.goatcounter.com/count" '
              'async src="//gc.zgo.at/count.js"></script>')
 
+# 본문 폰트. 윈도우 기본 '맑은 고딕' 대신 한국어 웹 표준 Pretendard 를 쓴다.
+# (동적 서브셋 — 실제 쓰는 글자만 받아 가벼움. 실패해도 아래 시스템 폰트로 폴백.)
+FONT_LINKS = (
+    '<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>'
+    '<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/'
+    'pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">'
+)
+
+# ── 색 팔레트 (라이트/다크를 한 곳에서 정의해 메인·개별페이지가 공유) ──
+# 역할 분리: 파랑(--blue)=브랜드/UI/링크/버튼, 빨강(--hot)=할인율·세이브(딜이 튀게).
+# 뉴트럴은 맑고 대비 있게, --panel-2/--line-2/--dim-2 로 표면 단계를 준다.
+LIGHT_VARS = (
+    "--bg:#f3f5f9;--panel:#ffffff;--panel-2:#eef1f7;--line:#e5e8f0;--line-2:#d3d9e6;"
+    "--ink:#0f1424;--dim:#5c6478;--dim-2:#97a0b4;"
+    "--blue:#2f6bff;--blue-ink:#1b4fd8;--blue-soft:#e9f0ff;"
+    "--hot:#e0304a;--hot-soft:#ffe9ec;--ok:#0a9d6e;"
+    "--shadow:rgba(15,20,36,.10);--imgbg:#eef1f7;"
+    '--font:"Pretendard Variable",Pretendard,"Apple SD Gothic Neo","Malgun Gothic",'
+    "system-ui,-apple-system,sans-serif;"
+)
+DARK_VARS = (
+    "--bg:#0b111e;--panel:#141b2b;--panel-2:#1b2333;--line:#28324a;--line-2:#39445e;"
+    "--ink:#eef2f8;--dim:#9aa5be;--dim-2:#68738b;"
+    "--blue:#5a90ff;--blue-ink:#82a8ff;--blue-soft:#172136;"
+    "--hot:#ff5c6b;--hot-soft:#2a1620;--ok:#2fd39a;"
+    "--shadow:rgba(0,0,0,.40);--imgbg:#111828;"
+)
+PALETTE_CSS = (
+    f":root{{{LIGHT_VARS}}}"
+    f':root[data-theme="dark"]{{{DARK_VARS}}}'
+    f'@media(prefers-color-scheme:dark){{:root:not([data-theme="light"]){{{DARK_VARS}}}}}'
+)
+
 # 라디에이더 + 불꽃 파비콘 (파란 배경, 흰 레이더 링, 중앙 불꽃 블립)
 FAVICON_SVG = (
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">'
@@ -220,7 +253,7 @@ def popular_html(deals, k=8):
         </a>""")
     return f"""
       <aside class="popular" aria-label="지금 인기 특가">
-        <h2>🔥 지금 인기 특가</h2>
+        <h2>지금 인기 특가</h2>
         <p class="popular__note">토스쇼핑에서 많이 본 상품 순</p>
         <div class="popular__list">{''.join(rows)}</div>
       </aside>"""
@@ -249,11 +282,15 @@ def today_deal_html(items):
           </a>""")
     return f"""
       <section class="dealsec" aria-label="오늘의 하루특가">
-        <h2 class="sec-h">🔥 오늘의 하루특가 <span class="sec-h__note">오늘만 이 가격</span></h2>
         <div class="filterrow dealrow">
-          <button class="arrow arrow--l" data-dir="-1" tabindex="-1" aria-label="왼쪽으로">‹</button>
+          <div class="dealhead">
+            <h2 class="sec-h">오늘의 하루특가 <span class="sec-h__note">오늘만 이 가격</span></h2>
+            <div class="dealnav">
+              <button class="arrow arrow--l" data-dir="-1" tabindex="-1" aria-label="왼쪽으로">‹</button>
+              <button class="arrow arrow--r" data-dir="1" tabindex="-1" aria-label="오른쪽으로">›</button>
+            </div>
+          </div>
           <div class="filters filters--deal">{''.join(cards)}</div>
-          <button class="arrow arrow--r" data-dir="1" tabindex="-1" aria-label="오른쪽으로">›</button>
         </div>
       </section>"""
 
@@ -343,28 +380,14 @@ THEME_INIT = ("<script>try{var t=localStorage.getItem('theme');"
               "if(t)document.documentElement.dataset.theme=t;}catch(e){}</script>")
 
 # 개별 상품 페이지 전용 스타일. 메인과 같은 팔레트/폰트를 쓴다.
-DETAIL_CSS = """
-:root{
-  --bg:#eef2f8; --panel:#ffffff; --line:#e3e9f2; --ink:#141b2e; --dim:#69718a;
-  --blue:#2f6bff; --blue-ink:#1b4fd8; --blue-soft:#eaf1ff;
-  --hot:#e5484d; --ok:#0a9d6e; --shadow:rgba(20,27,46,.10); --imgbg:#f0f3f8;
-  --font:"Malgun Gothic","맑은 고딕","Apple SD Gothic Neo",system-ui,-apple-system,sans-serif;
-}
-:root[data-theme="dark"]{
-  --bg:#0e1524; --panel:#161f31; --line:#26314a; --ink:#eef2f8; --dim:#9aa5be;
-  --blue:#4b83ff; --blue-ink:#6b9bff; --blue-soft:#18233c;
-  --hot:#ff6b6f; --ok:#2fd39a; --shadow:rgba(0,0,0,.35); --imgbg:#0f1728;
-}
-@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#0e1524; --panel:#161f31; --line:#26314a; --ink:#eef2f8; --dim:#9aa5be;
-  --blue:#4b83ff; --blue-ink:#6b9bff; --blue-soft:#18233c;
-  --hot:#ff6b6f; --ok:#2fd39a; --shadow:rgba(0,0,0,.35); --imgbg:#0f1728;
-}}
+DETAIL_CSS = PALETTE_CSS + """
 *{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-text-size-adjust:100%}
 body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;
   line-height:1.5;letter-spacing:-.01em;overflow-x:hidden;-webkit-tap-highlight-color:transparent}
 a{color:inherit}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px;border-radius:4px}
+::selection{background:var(--blue);color:#fff}
 .wrap{max-width:560px;margin:0 auto;
   padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right))}
 .top{display:flex;align-items:center;gap:9px;padding:18px 0 6px}
@@ -378,9 +401,9 @@ a{color:inherit}
 .hero{background:var(--imgbg);border:1px solid var(--line);border-radius:16px;
   overflow:hidden;position:relative;margin-top:8px;aspect-ratio:1/1}
 .hero img{width:100%;height:100%;object-fit:cover}
-.hero__rate{position:absolute;left:12px;top:12px;background:var(--blue);color:#fff;
+.hero__rate{position:absolute;left:12px;top:12px;background:var(--hot);color:#fff;
   display:flex;align-items:baseline;padding:6px 12px;border-radius:10px;font-weight:800;
-  box-shadow:0 3px 10px rgba(47,107,255,.35)}
+  box-shadow:0 2px 5px rgba(20,27,46,.22)}
 .hero__rate b{font-size:24px;line-height:1}
 .hero__rate i{font-size:12px;font-style:normal;margin-left:1px}
 .pname{font-size:18px;line-height:1.45;font-weight:700;margin:16px 0 10px}
@@ -390,9 +413,9 @@ a{color:inherit}
 .badge--low{border-color:var(--ok);color:var(--ok);background:color-mix(in srgb,var(--ok) 12%,transparent)}
 .pricebox{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;
   padding:14px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
-.pricebox .price{font-weight:800;font-size:30px;color:var(--ink)}
+.pricebox .price{font-weight:800;font-size:30px;color:var(--ink);font-variant-numeric:tabular-nums}
 .pricebox .price em{font-style:normal;font-size:15px;font-weight:700;margin-left:2px}
-.pricebox .was{font-size:15px;color:#9aa2b5;text-decoration:line-through}
+.pricebox .was{font-size:15px;color:var(--dim-2);text-decoration:line-through}
 /* 가격 변동 그래프 */
 .chart-wrap{border:1px solid var(--line);background:var(--panel);border-radius:14px;
   padding:14px 14px 10px;margin:16px 0}
@@ -407,12 +430,12 @@ a{color:inherit}
 .chart-lbl{fill:var(--dim);font-size:11px;font-weight:700}
 .chart-min-lbl{fill:var(--ok);font-size:11px;font-weight:800}
 /* 고지 문구 + 구매 버튼 */
-.disclosure{border:1px solid var(--blue);border-left-width:4px;background:var(--blue-soft);
+.disclosure{border:1px solid color-mix(in srgb,var(--blue) 22%,var(--line));background:var(--blue-soft);
   color:var(--ink);font-size:13.5px;font-weight:600;border-radius:10px;
   padding:13px 15px;margin:16px 0 10px;line-height:1.6}
 .buy{display:flex;align-items:center;justify-content:center;gap:6px;background:var(--blue);
   color:#fff;font-weight:800;font-size:17px;padding:16px;border-radius:12px;
-  text-decoration:none;box-shadow:0 8px 22px rgba(47,107,255,.35)}
+  text-decoration:none;box-shadow:0 6px 16px rgba(47,107,255,.24)}
 .buy:active{transform:scale(.99)}
 .note{font-size:12px;color:var(--dim);text-align:center;margin-top:10px;line-height:1.6}
 footer{border-top:1px solid var(--line);margin-top:22px;padding:18px 0 60px;
@@ -465,6 +488,19 @@ def price_chart_svg(history):
         return s[5:10].replace("-", ".") if len(s) >= 10 else ""
 
     d0, d1 = lbl_date(pts[0][0]), lbl_date(pts[-1][0])
+
+    # '최저' 라벨: 최저점이 좌/우 끝에 있으면 가운데 정렬 텍스트가 SVG 밖으로
+    # 삐져나온다(chart 는 overflow:visible). 끝에서는 앵커를 start/end 로 바꿔
+    # 안쪽으로 붙이고, y 도 상단 여백 안으로 가둔다.
+    mnx = X(min_i)
+    if mnx < W * 0.18:
+        min_anchor, min_x = "start", padL
+    elif mnx > W * 0.82:
+        min_anchor, min_x = "end", W - padR
+    else:
+        min_anchor, min_x = "middle", mnx
+    min_y = max(Y(prices[min_i]) - 8, padT + 10)
+
     return (
         f'<svg class="chart" viewBox="0 0 {W} {H}" role="img" aria-label="가격 변동 그래프">'
         f'<polyline class="chart-area" points="{area}"/>'
@@ -472,8 +508,8 @@ def price_chart_svg(history):
         f'<circle class="chart-min" cx="{X(min_i):.1f}" cy="{Y(prices[min_i]):.1f}" r="4"/>'
         f'<circle class="chart-cur" cx="{X(cur_i):.1f}" cy="{Y(cur_p):.1f}" r="4.5"/>'
         f'<text class="chart-lbl" x="{X(0):.0f}" y="13">최고 {won(hi)}원</text>'
-        f'<text class="chart-min-lbl" x="{X(min_i):.1f}" y="{Y(prices[min_i])-8:.1f}" '
-        f'text-anchor="middle">최저 {won(lo)}</text>'
+        f'<text class="chart-min-lbl" x="{min_x:.1f}" y="{min_y:.1f}" '
+        f'text-anchor="{min_anchor}">최저 {won(lo)}</text>'
         f'<text class="chart-lbl" x="{X(0):.0f}" y="{H-8}">{d0}</text>'
         f'<text class="chart-lbl" x="{W-padR:.0f}" y="{H-8}" text-anchor="end">{d1}</text>'
         f'</svg>'
@@ -509,13 +545,13 @@ def product_page_html(deal, chart_svg):
 
     if chart_svg:
         chart_block = (
-            '<div class="chart-wrap"><h2>📉 가격 변동</h2>'
+            '<div class="chart-wrap"><h2>가격 변동</h2>'
             '<p class="chart-note">특가레이더가 수집할 때마다 기록한 실구매가예요.</p>'
             f'{chart_svg}</div>'
         )
     else:
         chart_block = (
-            '<div class="chart-wrap"><h2>📉 가격 변동</h2>'
+            '<div class="chart-wrap"><h2>가격 변동</h2>'
             '<p class="chart-empty">가격 추적을 막 시작했어요. 갱신이 쌓이면 변동 그래프가 나타납니다.</p></div>'
         )
 
@@ -525,13 +561,14 @@ def product_page_html(deal, chart_svg):
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#2f6bff" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0e1524" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#0b111e" media="(prefers-color-scheme: dark)">
 <meta name="format-detection" content="telephone=no">
 <meta name="robots" content="noindex,follow">
 {THEME_INIT}
 <title>{title}</title>
 <meta name="description" content="{desc}">
 <link rel="icon" href="{icon}" type="image/svg+xml">
+{FONT_LINKS}
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="{SITE_NAME}">
 <meta property="og:title" content="{name}">
@@ -619,7 +656,7 @@ def render(deals, today_deals, best_ranking, generated_at):
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#2f6bff" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0e1524" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#0b111e" media="(prefers-color-scheme: dark)">
 <meta name="format-detection" content="telephone=no">
 <script>try{{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t;}}catch(e){{}}</script>
 <title>핫딜 모음 · 토스쇼핑 반값 특가 | {SITE_NAME}</title>
@@ -627,6 +664,7 @@ def render(deals, today_deals, best_ranking, generated_at):
 <meta name="keywords" content="{SEO_KEYWORDS}">
 {gverify}<link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="favicon.svg">
+{FONT_LINKS}
 {canonical}<meta property="og:type" content="website">
 <meta property="og:site_name" content="{SITE_NAME}">
 <meta property="og:title" content="핫딜 모음 · 토스쇼핑 반값 특가 | {SITE_NAME}">
@@ -636,28 +674,7 @@ def render(deals, today_deals, best_ranking, generated_at):
 <meta name="twitter:description" content="토스쇼핑 반값 이하 핫딜 특가 {n_all}개를 자동으로 모읍니다.">
 {jsonld}{ANALYTICS}
 <style>
-:root{{
-  --bg:#eef2f8; --panel:#ffffff; --line:#e3e9f2;
-  --ink:#141b2e; --dim:#69718a;
-  --blue:#2f6bff; --blue-ink:#1b4fd8; --blue-soft:#eaf1ff;
-  --hot:#e5484d; --ok:#0a9d6e; --shadow:rgba(20,27,46,.10); --imgbg:#f0f3f8;
-  --font:"Malgun Gothic","맑은 고딕","Apple SD Gothic Neo",system-ui,-apple-system,sans-serif;
-}}
-/* 다크 팔레트: 토글(data-theme) 또는 시스템 설정을 따른다 */
-:root[data-theme="dark"]{{
-  --bg:#0e1524; --panel:#161f31; --line:#26314a;
-  --ink:#eef2f8; --dim:#9aa5be;
-  --blue:#4b83ff; --blue-ink:#6b9bff; --blue-soft:#18233c;
-  --hot:#ff6b6f; --ok:#2fd39a; --shadow:rgba(0,0,0,.35); --imgbg:#0f1728;
-}}
-@media(prefers-color-scheme:dark){{
-  :root:not([data-theme="light"]){{
-    --bg:#0e1524; --panel:#161f31; --line:#26314a;
-    --ink:#eef2f8; --dim:#9aa5be;
-    --blue:#4b83ff; --blue-ink:#6b9bff; --blue-soft:#18233c;
-    --hot:#ff6b6f; --ok:#2fd39a; --shadow:rgba(0,0,0,.35); --imgbg:#0f1728;
-  }}
-}}
+{PALETTE_CSS}
 *{{box-sizing:border-box;margin:0;padding:0}}
 html{{-webkit-text-size-adjust:100%;scroll-behavior:smooth}}
 body{{
@@ -666,6 +683,8 @@ body{{
   overflow-x:hidden; -webkit-tap-highlight-color:transparent;
 }}
 a{{color:inherit}}
+:focus-visible{{outline:2px solid var(--blue);outline-offset:2px;border-radius:4px}}
+::selection{{background:var(--blue);color:#fff}}
 .wrap{{
   max-width:1200px; margin:0 auto;
   padding-left:max(16px,env(safe-area-inset-left));
@@ -681,20 +700,21 @@ header{{padding:26px 0 16px}}
   font-size:18px;line-height:1;cursor:pointer;transition:.15s;
 }}
 .theme-btn:hover{{border-color:var(--blue);color:var(--blue)}}
-.brand__mark{{width:38px;height:38px;border-radius:10px;flex:0 0 auto;box-shadow:0 4px 12px rgba(47,107,255,.28)}}
+.brand__mark{{width:38px;height:38px;border-radius:10px;flex:0 0 auto;box-shadow:0 2px 8px rgba(47,107,255,.18)}}
 .brand h1{{font-size:clamp(22px,5vw,30px);font-weight:800;letter-spacing:-.02em}}
 .brand h1 span{{color:var(--blue)}}
 .intro{{margin-top:10px;color:var(--dim);font-size:14px;line-height:1.6;max-width:640px}}
 .stats{{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}}
 .stat{{
-  border:1px solid var(--line);background:var(--panel);border-radius:10px;
-  padding:8px 12px;font-size:12.5px;color:var(--dim);font-weight:600;
+  border:1px solid transparent;background:var(--panel-2);border-radius:9px;
+  padding:7px 12px;font-size:12.5px;color:var(--dim);font-weight:600;
 }}
-.stat b{{color:var(--blue);font-weight:800}}
+.stat b{{color:var(--ink);font-weight:800;font-variant-numeric:tabular-nums}}
+.stat--hot b{{color:var(--hot)}}
 
 /* ── 필터 ── */
 .filterbar{{
-  position:sticky;top:0;z-index:8;margin-top:14px;
+  position:sticky;top:0;z-index:8;margin-top:24px;
   background:color-mix(in srgb, var(--bg) 92%, transparent);backdrop-filter:blur(10px);
   border-bottom:1px solid var(--line);
 }}
@@ -702,14 +722,18 @@ header{{padding:26px 0 16px}}
 .filterrow--cat{{border-top:1px dashed var(--line);margin-top:10px}}
 .filters{{display:flex;gap:7px;overflow-x:auto;padding:12px 0;scrollbar-width:none;-webkit-overflow-scrolling:touch}}
 .filters::-webkit-scrollbar{{display:none}}
-/* 좌우 화살표 (PC에서 넘칠 때만) */
+/* 좌우 화살표 (넘칠 때만) — 가장자리에 떠 있는 작은 원형 버튼 */
 .arrow{{
-  position:absolute;top:0;bottom:0;width:36px;border:none;cursor:pointer;z-index:2;
+  position:absolute;top:50%;transform:translateY(-50%);z-index:3;
+  width:32px;height:32px;border-radius:50%;padding:0;
+  border:1px solid var(--line);background:var(--panel);color:var(--dim);
   display:none;align-items:center;justify-content:center;
-  color:var(--ink);font-size:20px;font-weight:800;
+  font-size:16px;font-weight:600;line-height:1;cursor:pointer;
+  box-shadow:0 2px 8px var(--shadow);transition:color .15s,border-color .15s;
 }}
-.arrow--l{{left:0;background:linear-gradient(90deg,var(--bg) 60%,transparent)}}
-.arrow--r{{right:0;background:linear-gradient(270deg,var(--bg) 60%,transparent)}}
+.arrow:hover{{color:var(--blue);border-color:var(--blue)}}
+.arrow--l{{left:-6px}}
+.arrow--r{{right:-6px}}
 .filterrow.of-l .arrow--l,
 .filterrow.of-r .arrow--r{{display:flex}}
 .chip{{
@@ -725,7 +749,7 @@ header{{padding:26px 0 16px}}
 /* ── 레이아웃: 본문 + 인기 사이드 ──
    1fr 대신 minmax(0,1fr) 로 트랙이 내부 콘텐츠 너비만큼 부풀지 않게 한다.
    min-width:0 이 없으면 가로 스크롤 목록이 트랙을 밀어 화면이 넓어진다. */
-.layout{{display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:20px;align-items:start;margin:14px 0 40px}}
+.layout{{display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:20px;align-items:start;margin:18px 0 48px}}
 .layout>main{{min-width:0}}
 .grid{{min-width:0}}
 
@@ -760,7 +784,7 @@ header{{padding:26px 0 16px}}
   text-decoration:none;display:flex;flex-direction:column;
   transition:box-shadow .18s, transform .18s, border-color .18s; animation:rise .5s both;
 }}
-.card:hover{{box-shadow:0 10px 26px var(--shadow);border-color:color-mix(in srgb,var(--blue) 35%,var(--line))}}
+.card:hover{{box-shadow:0 6px 18px var(--shadow);border-color:color-mix(in srgb,var(--blue) 35%,var(--line))}}
 .card[hidden]{{display:none}}
 @media(hover:hover){{ .card:hover{{transform:translateY(-3px)}} }}
 @keyframes rise{{from{{opacity:0;transform:translateY(10px)}}to{{opacity:1;transform:none}}}}
@@ -768,17 +792,17 @@ header{{padding:26px 0 16px}}
 .card__media img{{width:100%;height:100%;object-fit:cover;transition:transform .5s ease}}
 .card:hover .card__media img{{transform:scale(1.05)}}
 .card__rate{{
-  position:absolute;left:10px;top:10px;background:var(--blue);color:#fff;
+  position:absolute;left:10px;top:10px;background:var(--hot);color:#fff;
   display:flex;align-items:baseline;padding:4px 9px;border-radius:9px;font-weight:800;
-  box-shadow:0 3px 10px rgba(47,107,255,.35);
+  box-shadow:0 2px 5px rgba(20,27,46,.22);
 }}
 .card__rate b{{font-size:19px;line-height:1;font-weight:800}}
 .card__rate i{{font-size:11px;font-style:normal;margin-left:1px}}
 .card__share{{
   position:absolute;right:8px;top:8px;width:30px;height:30px;border-radius:50%;z-index:2;
   display:flex;align-items:center;justify-content:center;font-size:13px;line-height:1;
-  background:color-mix(in srgb,var(--panel) 82%,transparent);border:1px solid var(--line);
-  -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);cursor:pointer;transition:.15s;
+  background:var(--panel);border:1px solid var(--line);
+  box-shadow:0 1px 4px var(--shadow);cursor:pointer;transition:.15s;
 }}
 .card__share:hover{{border-color:var(--blue);color:var(--blue)}}
 .card__share.copied{{background:var(--ok);color:#fff;border-color:var(--ok)}}
@@ -795,18 +819,23 @@ header{{padding:26px 0 16px}}
 .badge--low{{border-color:var(--ok);color:var(--ok);background:color-mix(in srgb,var(--ok) 12%,transparent)}}
 .badge--quiet{{color:var(--dim);font-weight:600}}
 .card__price{{margin-top:auto;display:flex;align-items:baseline;gap:7px;flex-wrap:wrap}}
-.price{{font-weight:800;font-size:21px;color:var(--ink)}}
+.price{{font-weight:800;font-size:21px;color:var(--ink);font-variant-numeric:tabular-nums}}
 .price em{{font-style:normal;font-size:12px;font-weight:600;margin-left:1px}}
-.was{{font-size:12.5px;color:#9aa2b5}}
+.was{{font-size:12.5px;color:var(--dim-2)}}
 .card__end{{font-size:11.5px;color:var(--dim);font-weight:600;min-height:1em}}
 .card__end.urgent{{color:var(--hot);font-weight:700}}
 
 .empty{{padding:60px 0;text-align:center;color:var(--dim);font-size:14px}}
 
 /* ── 상단 섹션: 하루특가 캐러셀 + 베스트랭킹 ── */
-.sec-h{{font-size:17px;font-weight:800;letter-spacing:-.02em;margin:22px 0 10px}}
+.sec-h{{font-size:18px;font-weight:800;letter-spacing:-.03em;margin:28px 0 12px}}
 .sec-h__note{{font-size:12px;font-weight:600;color:var(--dim);margin-left:4px}}
 .sec-h__hl{{color:var(--blue)}}
+/* 하루특가: 제목줄 오른쪽에 화살표(상품 위에 겹치지 않게). 화살표 JS 훅은 그대로 */
+.dealhead{{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:28px 0 12px}}
+.dealhead .sec-h{{margin:0}}
+.dealnav{{display:flex;gap:6px;flex:0 0 auto;padding-bottom:2px}}
+.dealrow .arrow{{position:static;transform:none;left:auto;right:auto}}
 /* 하루특가 카드(가로 스크롤 아이템). .filters--deal 은 기존 .filters 스트립 재사용 */
 .filters--deal{{gap:10px;align-items:stretch}}
 .dealcard{{
@@ -814,18 +843,18 @@ header{{padding:26px 0 16px}}
   background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;
   display:flex;flex-direction:column;transition:box-shadow .18s,border-color .18s;
 }}
-.dealcard:hover{{box-shadow:0 8px 20px var(--shadow);border-color:color-mix(in srgb,var(--blue) 35%,var(--line))}}
+.dealcard:hover{{box-shadow:0 6px 16px var(--shadow);border-color:color-mix(in srgb,var(--blue) 35%,var(--line))}}
 .dealcard__media{{position:relative;aspect-ratio:1/1;background:var(--imgbg)}}
 .dealcard__media img{{width:100%;height:100%;object-fit:cover}}
-.dealcard__rate{{position:absolute;left:8px;top:8px;background:var(--blue);color:#fff;
+.dealcard__rate{{position:absolute;left:8px;top:8px;background:var(--hot);color:#fff;
   display:flex;align-items:baseline;padding:3px 8px;border-radius:8px;font-weight:800;
-  box-shadow:0 3px 10px rgba(47,107,255,.35)}}
+  box-shadow:0 2px 5px rgba(20,27,46,.22)}}
 .dealcard__rate b{{font-size:16px;line-height:1}}
 .dealcard__rate i{{font-size:10px;font-style:normal;margin-left:1px}}
 .dealcard__name{{font-size:12.5px;line-height:1.35;color:var(--ink);padding:8px 10px 0;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.7em}}
 .dealcard__price{{padding:2px 10px 0}}
-.dealcard__price .price{{font-weight:800;font-size:17px;color:var(--ink)}}
+.dealcard__price .price{{font-weight:800;font-size:17px;color:var(--ink);font-variant-numeric:tabular-nums}}
 .dealcard__price .price em{{font-style:normal;font-size:11px;font-weight:600;margin-left:1px}}
 .dealcard__badges{{padding:6px 10px 10px;display:flex;flex-wrap:wrap;gap:4px;margin-top:auto}}
 /* 베스트랭킹 목록 (2열) */
@@ -840,7 +869,7 @@ header{{padding:26px 0 16px}}
 .rankrow__badges{{display:flex;flex-wrap:wrap;gap:4px}}
 .rankrow__price{{font-size:12.5px;color:var(--dim);font-weight:600}}
 .rankrow__price b{{color:var(--hot);font-weight:800;margin-right:3px}}
-.rankrow__price .was{{font-size:11px;color:#9aa2b5;margin-left:4px}}
+.rankrow__price .was{{font-size:11px;color:var(--dim-2);margin-left:4px}}
 @media(max-width:720px){{
   .rank-list{{grid-template-columns:1fr}}
   .dealcard{{flex:0 0 44%}}
@@ -851,7 +880,7 @@ header{{padding:26px 0 16px}}
   position:fixed;right:16px;bottom:max(16px,env(safe-area-inset-bottom));
   width:50px;height:50px;border-radius:50%;border:none;cursor:pointer;
   background:var(--blue);color:#fff;font-size:22px;line-height:50px;
-  box-shadow:0 8px 22px rgba(47,107,255,.45);
+  box-shadow:0 6px 16px rgba(47,107,255,.28);
   opacity:0;transform:translateY(12px);pointer-events:none;transition:.25s;z-index:20;
 }}
 .totop.show{{opacity:1;transform:none;pointer-events:auto}}
@@ -859,7 +888,7 @@ header{{padding:26px 0 16px}}
 
 footer{{border-top:1px solid var(--line);padding:24px 0 90px;color:var(--dim);font-size:12.5px}}
 .disclosure{{
-  border:1px solid var(--blue);border-left-width:4px;background:var(--blue-soft);
+  border:1px solid color-mix(in srgb,var(--blue) 22%,var(--line));background:var(--blue-soft);
   color:var(--ink);font-size:14px;font-weight:600;border-radius:10px;
   padding:14px 16px;margin-bottom:14px;line-height:1.6;
 }}
@@ -914,13 +943,13 @@ footer{{border-top:1px solid var(--line);padding:24px 0 90px;color:var(--dim);fo
       <button class="theme-btn" id="themeBtn" aria-label="라이트/다크 전환">🌙</button>
     </div>
     <p class="intro">
-      토스쇼핑 <b>핫딜</b>을 자동으로 모으는 <b>핫딜 모음 사이트</b>예요.
+      토스쇼핑 핫딜을 자동으로 모으는 핫딜 모음 사이트예요.
       50% 이상 할인되거나 30일 최저가인 상품만 골라, 하루에도 여러 번 새로 갱신합니다.
     </p>
     <div class="stats">
       <div class="stat">갱신 <b>{generated_at}</b></div>
       <div class="stat">전체 <b>{n_all}</b></div>
-      <div class="stat">70%↑ <b>{n70}</b></div>
+      <div class="stat stat--hot">70%↑ <b>{n70}</b></div>
       <div class="stat">30일최저 <b>{n_low}</b></div>
     </div>
   </header>
